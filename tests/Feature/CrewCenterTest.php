@@ -1,0 +1,62 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Flight;
+use App\Models\Pirep;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class CrewCenterTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_dashboard_renders_open_flights(): void
+    {
+        Flight::factory()->create(['flight_number' => 'SKY101']);
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertSee('SKYOS Crew Center');
+        $response->assertSee('SKY101');
+    }
+
+    public function test_valid_manual_pirep_is_saved(): void
+    {
+        $flight = Flight::factory()->create(['flight_number' => 'SKY240', 'payout_cents' => 24800]);
+
+        $response = $this->post(route('pireps.store'), [
+            'flight_number' => 'SKY240',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 58,
+            'landing_rate' => 145,
+            'remarks' => 'Smooth arrival.',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Your manual PIREP has been submitted for review.');
+        $this->assertDatabaseHas(Pirep::class, [
+            'flight_id' => $flight->id,
+            'flight_number' => 'SKY240',
+            'payout_cents' => 24800,
+            'status' => 'Pending review',
+        ]);
+    }
+
+    public function test_takeoff_event_posts_to_configured_webhook(): void
+    {
+        config()->set('services.skyos.webhook_url', 'https://hooks.example.test/skyos');
+        Http::preventStrayRequests();
+        Http::fake(['https://hooks.example.test/skyos' => Http::response([], 200)]);
+        $flight = Flight::factory()->create(['flight_number' => 'SKY310']);
+
+        $response = $this->post(route('flights.events.store', $flight), ['event_type' => 'Flight took off']);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('webhook_events', ['flight_id' => $flight->id, 'event_type' => 'Flight took off', 'status' => 'Delivered']);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://hooks.example.test/skyos');
+    }
+}

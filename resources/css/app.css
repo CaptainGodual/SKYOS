@@ -1,0 +1,18 @@
+@import '@coreui/coreui/dist/css/coreui.min.css';
+
+:root { --cui-primary: #2362d9; --cui-primary-rgb: 35, 98, 217; }
+body { background: var(--cui-tertiary-bg); }
+.sidebar-brand-mark { display: grid; width: 2.25rem; height: 2.25rem; place-items: center; border-radius: .5rem; background: #fff; color: var(--cui-primary); font-weight: 800; }
+.sidebar-brand-text { font-size: .85rem; font-weight: 700; letter-spacing: .16em; }
+.sidebar .nav-link.active, .sidebar .nav-link:hover { background: rgba(255, 255, 255, .12); }
+.nav-icon { width: 1.25rem; margin-right: .75rem; text-align: center; }
+.wrapper { min-height: 100vh; padding-left: var(--cui-sidebar-occupy-start, 16rem); }
+.page-hero { border: 0; background: linear-gradient(120deg, #193c7c, #2362d9); }
+.stat-card .card-body { min-height: 132px; }
+.stat-icon { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border-radius: 50%; background: rgba(var(--cui-primary-rgb), .12); color: var(--cui-primary); font-size: 1.25rem; }
+.flight-code { font-weight: 700; letter-spacing: .04em; }
+.route-line { color: var(--cui-secondary-color); font-size: .78rem; }
+.acars-map { position: relative; min-height: 190px; border-radius: .5rem; background-color: #e8f0fb; background-image: radial-gradient(#b5cae9 1px, transparent 1px), linear-gradient(130deg, transparent 48%, #3770c7 49%, #3770c7 51%, transparent 52%); background-size: 14px 14px, 100% 100%; }
+.acars-aircraft { position: absolute; top: 44%; left: 55%; color: var(--cui-primary); font-size: 1.5rem; transform: rotate(34deg); }
+.table > :not(caption) > * > * { vertical-align: middle; }
+@media (max-width: 991.98px) { .wrapper { padding-left: 0; } .sidebar { transform: translateX(-100%); transition: transform .15s ease-in-out; } body.sidebar-visible .sidebar { transform: translateX(0); } }
