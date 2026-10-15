@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Flight;
 use App\Models\Pirep;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -14,20 +15,27 @@ class CrewCenterTest extends TestCase
 
     public function test_dashboard_renders_open_flights(): void
     {
+        $user = User::factory()->create();
         Flight::factory()->create(['flight_number' => 'SKY101']);
 
-        $response = $this->get('/');
+        $response = $this->actingAs($user)->get('/');
 
         $response->assertOk();
         $response->assertSee('SKYOS Crew Center');
         $response->assertSee('SKY101');
     }
 
+    public function test_guests_are_redirected_to_login(): void
+    {
+        $this->get('/')->assertRedirect(route('login'));
+    }
+
     public function test_valid_manual_pirep_is_saved(): void
     {
+        $user = User::factory()->create();
         $flight = Flight::factory()->create(['flight_number' => 'SKY240', 'payout_cents' => 24800]);
 
-        $response = $this->post(route('pireps.store'), [
+        $response = $this->actingAs($user)->post(route('pireps.store'), [
             'flight_number' => 'SKY240',
             'departure' => 'KJFK',
             'arrival' => 'KBOS',
@@ -40,6 +48,7 @@ class CrewCenterTest extends TestCase
         $response->assertSessionHas('success', 'Your manual PIREP has been submitted for review.');
         $this->assertDatabaseHas(Pirep::class, [
             'flight_id' => $flight->id,
+            'pilot_id' => $user->id,
             'flight_number' => 'SKY240',
             'payout_cents' => 24800,
             'status' => 'Pending review',
@@ -51,9 +60,10 @@ class CrewCenterTest extends TestCase
         config()->set('services.skyos.webhook_url', 'https://hooks.example.test/skyos');
         Http::preventStrayRequests();
         Http::fake(['https://hooks.example.test/skyos' => Http::response([], 200)]);
+        $user = User::factory()->create();
         $flight = Flight::factory()->create(['flight_number' => 'SKY310']);
 
-        $response = $this->post(route('flights.events.store', $flight), ['event_type' => 'Flight took off']);
+        $response = $this->actingAs($user)->post(route('flights.events.store', $flight), ['event_type' => 'Flight took off']);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('webhook_events', ['flight_id' => $flight->id, 'event_type' => 'Flight took off', 'status' => 'Delivered']);

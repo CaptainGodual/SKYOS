@@ -18,7 +18,11 @@ class CrewMessageFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'sender_name' => fake()->name(),
+            'recipient_name' => fake()->name(),
+            'subject' => fake()->sentence(4),
+            'body' => fake()->paragraph(),
+            'read_at' => null,
         ];
     }
 }

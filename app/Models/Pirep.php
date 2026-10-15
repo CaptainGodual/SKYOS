@@ -12,10 +12,15 @@ class Pirep extends Model
     /** @use HasFactory<PirepFactory> */
     use HasFactory;
 
-    protected $fillable = ['flight_id', 'pilot_name', 'flight_number', 'departure', 'arrival', 'block_minutes', 'landing_rate', 'payout_cents', 'remarks', 'status'];
+    protected $fillable = ['flight_id', 'pilot_id', 'pilot_name', 'flight_number', 'departure', 'arrival', 'block_minutes', 'landing_rate', 'payout_cents', 'remarks', 'status'];
 
     public function flight(): BelongsTo
     {
         return $this->belongsTo(Flight::class);
+    }
+
+    public function pilot(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pilot_id');
     }
 }
