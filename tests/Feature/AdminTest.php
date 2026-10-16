@@ -45,6 +45,7 @@ class AdminTest extends TestCase
             'flight_number' => 'SKY501',
             'departure' => 'KJFK',
             'arrival' => 'KBOS',
+            'route' => 'KJFK → KBOS',
             'aircraft' => 'Airbus A320neo',
             'scheduled_at' => now()->addDay()->format('Y-m-d H:i'),
             'estimated_minutes' => 90,

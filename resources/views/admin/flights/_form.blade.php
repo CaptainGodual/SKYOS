@@ -23,6 +23,12 @@
     </div>
 
     <div class="col-md-6">
+        <label class="form-label">Route</label>
+        <input class="form-control @error('route') is-invalid @enderror" id="route" name="route" value="{{ old('route', $flight?->route ?? $flight?->departure ? $flight->departure . ' → ' . $flight->arrival : '') }}" placeholder="e.g. JFK → LHR" required>
+        @error('route')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+    </div>
+
+    <div class="col-md-6">
         <label class="form-label">Aircraft</label>
         <input class="form-control @error('aircraft') is-invalid @enderror" id="aircraft" name="aircraft" value="{{ old('aircraft', $flight?->aircraft ?? '') }}" placeholder="Airbus A320neo" required>
         @error('aircraft')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

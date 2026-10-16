@@ -21,6 +21,7 @@ class UpdateFlightRequest extends FormRequest
             'flight_number' => ['sometimes', 'required', 'string', 'max:20', 'unique:flights,flight_number,'.$this->route('flight')->id],
             'departure' => ['sometimes', 'required', 'string', 'size:4', 'alpha'],
             'arrival' => ['sometimes', 'required', 'string', 'size:4', 'alpha'],
+            'route' => ['sometimes', 'required', 'string', 'max:20'],
             'aircraft' => ['sometimes', 'required', 'string', 'max:60'],
             'scheduled_at' => ['sometimes', 'required', 'date'],
             'estimated_minutes' => ['sometimes', 'required', 'integer', 'min:1', 'max:1440'],
