@@ -47,9 +47,9 @@
     </div>
 
     <div class="col-md-6">
-        <label class="form-label">Payout (cents)</label>
-        <input class="form-control @error('payout_cents') is-invalid @enderror" id="payout_cents" name="payout_cents" type="number" value="{{ old('payout_cents', $flight?->payout_cents ?? '') }}" min="0" required>
-        <div class="form-text">Crew payout in cents when the PIREP is approved/paid.</div>
+        <label class="form-label">Payout (dollars)</label>
+        <input class="form-control @error('payout_cents') is-invalid @enderror" id="payout_cents" name="payout_cents" type="number" value="{{ old('payout_cents', $flight?->payout_cents ? number_format($flight->payout_cents / 100, 2) : '') }}" step="0.01" min="0" required>
+        <div class="form-text">Crew payout in dollars and cents when the PIREP is approved/paid.</div>
         @error('payout_cents')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 

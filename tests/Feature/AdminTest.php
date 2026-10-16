@@ -49,7 +49,7 @@ class AdminTest extends TestCase
             'aircraft' => 'Airbus A320neo',
             'scheduled_at' => now()->addDay()->format('Y-m-d H:i'),
             'estimated_minutes' => 90,
-            'payout_cents' => 18500,
+            'payout_cents' => 185.00,
             'status' => 'Open',
         ]);
 
@@ -76,7 +76,7 @@ class AdminTest extends TestCase
             'aircraft' => 'Boeing 737-800',
             'scheduled_at' => now()->addDay()->format('Y-m-d H:i'),
             'estimated_minutes' => 90,
-            'payout_cents' => 18500,
+            'payout_cents' => 185.00,
             'status' => 'Booked',
         ]);
 

@@ -25,7 +25,7 @@ class StoreFlightRequest extends FormRequest
             'aircraft' => ['required', 'string', 'max:60'],
             'scheduled_at' => ['required', 'date'],
             'estimated_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
-            'payout_cents' => ['required', 'integer', 'min:0'],
+            'payout_cents' => ['required', 'numeric', 'min:0'],
             'status' => ['required', 'string', 'in:Open,Booked,Canceled,Completed'],
         ];
     }

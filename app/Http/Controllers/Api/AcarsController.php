@@ -183,13 +183,13 @@ class AcarsController extends Controller
         ]);
         $webhooks->dispatch($flight->fresh(), 'Flight completed');
 
-        // Record revenue from flight payout
+        // Record pilot payout as expense (money going OUT to pilot)
         if ($flight->payout_cents > 0) {
             FinancialTransaction::create([
-                'type' => 'revenue',
-                'category' => 'Flight Revenue',
+                'type' => 'expense',
+                'category' => 'Pilot Payout',
                 'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
-                'amount_cents' => $flight->payout_cents,
+                'amount_cents' => -abs($flight->payout_cents),
                 'reference_type' => 'pirep',
                 'reference_id' => $flight->id,
             ]);

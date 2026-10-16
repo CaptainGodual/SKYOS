@@ -25,7 +25,7 @@ class UpdateFlightRequest extends FormRequest
             'aircraft' => ['sometimes', 'required', 'string', 'max:60'],
             'scheduled_at' => ['sometimes', 'required', 'date'],
             'estimated_minutes' => ['sometimes', 'required', 'integer', 'min:1', 'max:1440'],
-            'payout_cents' => ['sometimes', 'required', 'integer', 'min:0'],
+            'payout_cents' => ['sometimes', 'required', 'numeric', 'min:0'],
             'status' => ['sometimes', 'required', 'string', 'in:Open,Booked,Canceled,Completed'],
         ];
     }

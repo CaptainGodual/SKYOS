@@ -25,7 +25,10 @@ class FlightController extends Controller
 
     public function store(StoreFlightRequest $request): RedirectResponse
     {
-        Flight::query()->create($request->validated());
+        $data = $request->validated();
+        $data['payout_cents'] = (int) round($data['payout_cents'] * 100);
+
+        Flight::query()->create($data);
 
         return redirect()
             ->route('admin.flights.index')
@@ -40,7 +43,10 @@ class FlightController extends Controller
     public function update(UpdateFlightRequest $request, Flight $flight): RedirectResponse
     {
         try {
-            $flight->update($request->validated());
+            $data = $request->validated();
+            $data['payout_cents'] = (int) round($data['payout_cents'] * 100);
+
+            $flight->update($data);
 
             return redirect()
                 ->route('admin.flights.index')
