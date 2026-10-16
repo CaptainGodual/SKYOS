@@ -2,13 +2,17 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AirportController;
+use App\Http\Controllers\Admin\DownloadController;
 use App\Http\Controllers\Admin\FlightController;
 use App\Http\Controllers\Admin\PirepController;
+use App\Http\Controllers\Admin\TourController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CrewCenterController;
+use App\Http\Controllers\DownloadController as PublicDownloadController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TourCenterController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -33,6 +37,11 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
+    Route::get('/tours', [TourCenterController::class, 'index'])->name('tours.index');
+    Route::get('/tours/{tour}', [TourCenterController::class, 'show'])->name('tours.show');
+    Route::post('/tours/{tour}/book', [TourCenterController::class, 'book'])->name('tours.book');
+    Route::get('/tours/my', [TourCenterController::class, 'myTours'])->name('tours.my');
+
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
@@ -56,5 +65,23 @@ Route::middleware(['auth', 'approved'])->group(function () {
         Route::get('/airports/import', [AirportController::class, 'import'])->name('airports.import');
         Route::post('/airports/import', [AirportController::class, 'performImport'])->name('airports.import.store');
         Route::put('/airports/{airport}/hub', [AirportController::class, 'toggleHub'])->name('airports.toggle-hub');
+
+        Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');
+        Route::get('/downloads/create', [DownloadController::class, 'create'])->name('downloads.create');
+        Route::post('/downloads', [DownloadController::class, 'store'])->name('downloads.store');
+        Route::get('/downloads/{download}/edit', [DownloadController::class, 'edit'])->name('downloads.edit');
+        Route::put('/downloads/{download}', [DownloadController::class, 'update'])->name('downloads.update');
+        Route::delete('/downloads/{download}', [DownloadController::class, 'destroy'])->name('downloads.destroy');
+
+        Route::get('/tours', [TourController::class, 'index'])->name('tours.index');
+        Route::get('/tours/create', [TourController::class, 'create'])->name('tours.create');
+        Route::post('/tours', [TourController::class, 'store'])->name('tours.store');
+        Route::get('/tours/{tour}/edit', [TourController::class, 'edit'])->name('tours.edit');
+        Route::put('/tours/{tour}', [TourController::class, 'update'])->name('tours.update');
+        Route::delete('/tours/{tour}', [TourController::class, 'destroy'])->name('tours.destroy');
+        Route::post('/tours/{tour}/legs', [TourController::class, 'addLeg'])->name('tours.legs.store');
+        Route::delete('/tours/{tour}/legs/{leg}', [TourController::class, 'removeLeg'])->name('tours.legs.destroy');
     });
+
+    Route::get('/downloads/{download}', [PublicDownloadController::class, 'download'])->name('downloads.download');
 });

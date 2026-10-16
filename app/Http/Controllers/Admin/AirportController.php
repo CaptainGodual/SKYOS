@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Airport;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -153,5 +154,29 @@ class AirportController extends Controller
 
         return back()
             ->with('success', "{$airport->identifier} is now ".($airport->is_hub ? 'a crew hub' : 'no longer a crew hub').'.');
+    }
+
+    /**
+     * Search airports for Select2 autocomplete.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $query = $request->string('query');
+
+        $airports = Airport::query()
+            ->where(function ($q) use ($query): void {
+                $q->where('identifier', 'like', "%{$query}%")
+                    ->orWhere('name', 'like', "%{$query}%")
+                    ->orWhere('municipality', 'like', "%{$query}%");
+            })
+            ->orderBy('identifier')
+            ->limit(20)
+            ->get()
+            ->map(fn ($airport) => [
+                'id' => $airport->id,
+                'text' => $airport->identifier.' — '.$airport->name,
+            ]);
+
+        return response()->json(['results' => $airports->values()]);
     }
 }

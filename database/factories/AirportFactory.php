@@ -11,11 +11,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class AirportFactory extends Factory
 {
     /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $identifier;
-
-    /**
      * Define the model's default state.
      *
      * @return array<string, mixed>
@@ -23,7 +18,7 @@ class AirportFactory extends Factory
     public function definition(): array
     {
         return [
-            'identifier' => static::$identifier ??= fake()->unique()->bothify('??##'),
+            'identifier' => fake()->unique()->bothify('??##'),
             'iata_code' => fake()->optional()->bothify('???'),
             'icao_code' => fake()->optional()->bothify('####'),
             'name' => fake()->company().' Airport',
