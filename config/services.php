@@ -6,6 +6,10 @@ return [
         'webhook_url' => env('SKYOS_WEBHOOK_URL'),
     ],
 
+    'discord' => [
+        'webhook_url' => env('DISCORD_WEBHOOK_URL'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

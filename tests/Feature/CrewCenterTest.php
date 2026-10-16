@@ -15,7 +15,7 @@ class CrewCenterTest extends TestCase
 
     public function test_dashboard_renders_open_flights(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         Flight::factory()->create(['flight_number' => 'SKY101']);
 
         $response = $this->actingAs($user)->get('/');
@@ -32,7 +32,7 @@ class CrewCenterTest extends TestCase
 
     public function test_valid_manual_pirep_is_saved(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         $flight = Flight::factory()->create(['flight_number' => 'SKY240', 'payout_cents' => 24800]);
 
         $response = $this->actingAs($user)->post(route('pireps.store'), [
@@ -57,16 +57,16 @@ class CrewCenterTest extends TestCase
 
     public function test_takeoff_event_posts_to_configured_webhook(): void
     {
-        config()->set('services.skyos.webhook_url', 'https://hooks.example.test/skyos');
+        config()->set('discord.webhook_url', 'https://discord.com/api/webhooks/123/token');
         Http::preventStrayRequests();
-        Http::fake(['https://hooks.example.test/skyos' => Http::response([], 200)]);
-        $user = User::factory()->create();
+        Http::fake(['https://discord.com/api/webhooks/123/token' => Http::response([], 200)]);
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         $flight = Flight::factory()->create(['flight_number' => 'SKY310']);
 
         $response = $this->actingAs($user)->post(route('flights.events.store', $flight), ['event_type' => 'Flight took off']);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('webhook_events', ['flight_id' => $flight->id, 'event_type' => 'Flight took off', 'status' => 'Delivered']);
-        Http::assertSent(fn ($request): bool => $request->url() === 'https://hooks.example.test/skyos');
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://discord.com/api/webhooks/123/token');
     }
 }

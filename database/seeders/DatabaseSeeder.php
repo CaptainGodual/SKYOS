@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
             'email' => $email,
             'password' => $password,
             'email_verified_at' => now(),
+            'is_admin' => true,
         ]);
 
         $this->command?->info("Created administrator account for {$email}.");

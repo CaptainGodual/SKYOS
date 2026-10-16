@@ -49,6 +49,10 @@
             </div>
         @endif
 
+        @if (session('status'))
+            <div style="background:#e7f5ee;color:#1a7a4a;border:1px solid #b9e2c9;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:18px;">{{ session('status') }}</div>
+        @endif
+
         <div class="field">
             <label for="email">Email</label>
             <input id="email" name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="username">
@@ -64,6 +68,9 @@
         </label>
 
         <button type="submit">Sign in</button>
+        <p style="margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted);">
+            New to SKYOS? <a href="{{ route('register') }}" style="color: var(--brand); font-weight: 600;">Create an account</a>
+        </p>
     </form>
 </body>
 </html>
