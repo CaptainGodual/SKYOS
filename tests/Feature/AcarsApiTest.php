@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApiToken;
 use App\Models\Flight;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,7 +28,7 @@ class AcarsApiTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['token', 'pilot']);
-        $this->assertNotNull($user->fresh()->api_token);
+        $this->assertNotNull(ApiToken::where('user_id', $user->id)->first()->token);
     }
 
     public function test_acars_login_rejects_invalid_credentials(): void
@@ -69,7 +70,12 @@ class AcarsApiTest extends TestCase
         Http::fake(['https://discord.com/api/webhooks/123/token' => Http::response([], 200)]);
 
         $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
-        $user->update(['api_token' => 'test-token-123']);
+        ApiToken::create([
+            'user_id' => $user->id,
+            'token' => 'test-token-123',
+            'name' => 'Test Token',
+            'expires_at' => now()->addHours(24),
+        ]);
 
         $flight = Flight::factory()->create([
             'flight_number' => 'SKY501',
@@ -108,10 +114,20 @@ class AcarsApiTest extends TestCase
     public function test_acars_cannot_access_another_pilots_flight(): void
     {
         $owner = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
-        $owner->update(['api_token' => 'owner-token']);
+        ApiToken::create([
+            'user_id' => $owner->id,
+            'token' => 'owner-token',
+            'name' => 'Owner Token',
+            'expires_at' => now()->addHours(24),
+        ]);
 
         $attacker = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
-        $attacker->update(['api_token' => 'attacker-token']);
+        ApiToken::create([
+            'user_id' => $attacker->id,
+            'token' => 'attacker-token',
+            'name' => 'Attacker Token',
+            'expires_at' => now()->addHours(24),
+        ]);
 
         $flight = Flight::factory()->create(['pilot_id' => $owner->id]);
 
@@ -123,7 +139,12 @@ class AcarsApiTest extends TestCase
     public function test_acars_can_submit_pirep(): void
     {
         $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
-        $user->update(['api_token' => 'pirep-token']);
+        ApiToken::create([
+            'user_id' => $user->id,
+            'token' => 'pirep-token',
+            'name' => 'PIREP Token',
+            'expires_at' => now()->addHours(24),
+        ]);
 
         $flight = Flight::factory()->create([
             'flight_number' => 'SKY777',

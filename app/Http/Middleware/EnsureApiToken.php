@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\User;
+use App\Models\ApiToken;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,18 +22,21 @@ class EnsureApiToken
             return response()->json(['message' => 'Unauthorized.'], 401);
         }
 
-        $user = User::query()->where('api_token', $token)->first();
+        $apiToken = ApiToken::where('token', $token)->with('user')->first();
 
-        if (! $user) {
+        if (! $apiToken) {
             return response()->json(['message' => 'Invalid or expired token.'], 401);
         }
 
         // Check if token has expired
-        if ($user->token_expires_at && $user->token_expires_at->isPast()) {
+        if ($apiToken->expires_at && $apiToken->expires_at->isPast()) {
             return response()->json(['message' => 'Token has expired. Please re-authenticate.'], 401);
         }
 
-        $request->attributes->set('acars_user', $user);
+        // Update last used timestamp
+        $apiToken->update(['last_used_at' => now()]);
+
+        $request->attributes->set('acars_user', $apiToken->user);
 
         return $next($request);
     }

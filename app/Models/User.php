@@ -83,6 +83,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the pilot's API tokens.
+     */
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class, 'user_id');
+    }
+
+    /**
+     * Get the pilot's financial transactions.
+     */
+    public function financialTransactions()
+    {
+        return $this->hasMany(FinancialTransaction::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

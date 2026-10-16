@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AirportController;
 use App\Http\Controllers\Admin\DownloadController;
+use App\Http\Controllers\Admin\ExpenseController;
+use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\FlightController;
 use App\Http\Controllers\Admin\PirepController;
 use App\Http\Controllers\Admin\TourController;
@@ -82,6 +84,15 @@ Route::middleware(['auth', 'approved'])->group(function () {
         Route::delete('/tours/{tour}', [TourController::class, 'destroy'])->name('tours.destroy');
         Route::post('/tours/{tour}/legs', [TourController::class, 'addLeg'])->name('tours.legs.store');
         Route::delete('/tours/{tour}/legs/{leg}', [TourController::class, 'removeLeg'])->name('tours.legs.destroy');
+
+        Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
+
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     });
 
     Route::get('/downloads/{download}', [PublicDownloadController::class, 'download'])->name('downloads.download');

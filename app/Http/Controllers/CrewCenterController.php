@@ -6,7 +6,9 @@ use App\FlightWebhookDispatcher;
 use App\Http\Requests\StorePirepRequest;
 use App\Models\CrewMessage;
 use App\Models\Download;
+use App\Models\FinancialTransaction;
 use App\Models\Flight;
+use App\Models\FlightExpense;
 use App\Models\Pirep;
 use App\Models\WebhookEvent;
 use Illuminate\Http\RedirectResponse;
@@ -94,6 +96,38 @@ class CrewCenterController extends Controller
                 'arrived_at' => now(),
             ]);
             $webhooks->dispatch($flight->fresh(), 'Flight completed');
+
+            // Record revenue from flight payout
+            if ($flight->payout_cents > 0) {
+                FinancialTransaction::create([
+                    'type' => 'revenue',
+                    'category' => 'Flight Revenue',
+                    'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
+                    'amount_cents' => $flight->payout_cents,
+                    'reference_type' => 'pirep',
+                    'reference_id' => $flight->id,
+                ]);
+            }
+
+            // Record airport expenses for departure and arrival airports
+            $airportIds = [$flight->departure, $flight->arrival];
+            $expenses = FlightExpense::query()
+                ->where('is_active', true)
+                ->whereHas('airports', function ($q) use ($airportIds) {
+                    $q->whereIn('identifier', $airportIds);
+                })
+                ->get();
+
+            foreach ($expenses as $expense) {
+                FinancialTransaction::create([
+                    'type' => 'expense',
+                    'category' => $expense->category,
+                    'description' => "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
+                    'amount_cents' => -abs($expense->cost_cents),
+                    'reference_type' => 'pirep',
+                    'reference_id' => $flight->id,
+                ]);
+            }
         }
 
         return back()->with('success', 'Your manual PIREP has been submitted for review.');

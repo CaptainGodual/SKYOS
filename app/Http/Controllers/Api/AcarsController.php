@@ -7,7 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AcarsEventRequest;
 use App\Http\Requests\AcarsLoginRequest;
 use App\Http\Requests\AcarsPirepRequest;
+use App\Models\ApiToken;
+use App\Models\FinancialTransaction;
 use App\Models\Flight;
+use App\Models\FlightExpense;
 use App\Models\Pirep;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -48,17 +51,20 @@ class AcarsController extends Controller
             ], 403);
         }
 
-        // Token rotation: issue a new token without invalidating existing ones immediately.
-        // Old tokens expire naturally via token_expires_at.
+        // Create a new API token without invalidating existing ones.
+        // Each login generates a unique token with its own 24-hour expiry.
         $token = bin2hex(random_bytes(24));
         $expiresAt = now()->addHours(24);
-        $user->update([
-            'api_token' => $token,
-            'token_expires_at' => $expiresAt,
+
+        $apiToken = ApiToken::create([
+            'user_id' => $user->id,
+            'token' => $token,
+            'name' => 'ACARS Client',
+            'expires_at' => $expiresAt,
         ]);
 
         return response()->json([
-            'token' => $token,
+            'token' => $apiToken->token,
             'expires_at' => $expiresAt,
             'pilot' => [
                 'id' => $user->id,
@@ -176,6 +182,38 @@ class AcarsController extends Controller
             'arrived_at' => now(),
         ]);
         $webhooks->dispatch($flight->fresh(), 'Flight completed');
+
+        // Record revenue from flight payout
+        if ($flight->payout_cents > 0) {
+            FinancialTransaction::create([
+                'type' => 'revenue',
+                'category' => 'Flight Revenue',
+                'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
+                'amount_cents' => $flight->payout_cents,
+                'reference_type' => 'pirep',
+                'reference_id' => $flight->id,
+            ]);
+        }
+
+        // Record airport expenses for departure and arrival airports
+        $airportIds = [$flight->departure, $flight->arrival];
+        $expenses = FlightExpense::query()
+            ->where('is_active', true)
+            ->whereHas('airports', function ($q) use ($airportIds) {
+                $q->whereIn('identifier', $airportIds);
+            })
+            ->get();
+
+        foreach ($expenses as $expense) {
+            FinancialTransaction::create([
+                'type' => 'expense',
+                'category' => $expense->category,
+                'description' => "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
+                'amount_cents' => -abs($expense->cost_cents),
+                'reference_type' => 'pirep',
+                'reference_id' => $flight->id,
+            ]);
+        }
 
         return response()->json([
             'message' => 'PIREP submitted for review.',
