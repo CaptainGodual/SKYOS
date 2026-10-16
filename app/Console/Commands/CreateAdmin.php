@@ -8,8 +8,8 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
-#[Signature('app:create-admin')]
-#[Description('Create a new administrator account securely']]
+[Signature('app:create-admin')]
+[Description('Create a new administrator account securely']]
 class CreateAdmin extends Command
 {
     /**
