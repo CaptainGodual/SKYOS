@@ -12,6 +12,7 @@ use App\Models\Pirep;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AcarsController extends Controller
 {
@@ -22,9 +23,20 @@ class AcarsController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
+        // Use constant-time comparison to prevent timing attacks
+        // First fetch by email, then verify password in constant time
         $user = User::query()->where('email', $credentials['email'])->first();
 
-        if (! $user || ! password_verify($credentials['password'], $user->password)) {
+        if (! $user) {
+            // Still perform a hash comparison to maintain constant time
+            Hash::check($credentials['password'], '');
+
+            return response()->json([
+                'message' => 'Invalid email or password.',
+            ], 401);
+        }
+
+        if (! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'message' => 'Invalid email or password.',
             ], 401);
@@ -36,11 +48,18 @@ class AcarsController extends Controller
             ], 403);
         }
 
+        // Token rotation: issue a new token without invalidating existing ones immediately.
+        // Old tokens expire naturally via token_expires_at.
         $token = bin2hex(random_bytes(24));
-        $user->update(['api_token' => $token]);
+        $expiresAt = now()->addHours(24);
+        $user->update([
+            'api_token' => $token,
+            'token_expires_at' => $expiresAt,
+        ]);
 
         return response()->json([
             'token' => $token,
+            'expires_at' => $expiresAt,
             'pilot' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -138,22 +157,25 @@ class AcarsController extends Controller
 
         $flight = Flight::query()->where('flight_number', $data['flight_number'])->first();
 
+        // Verify flight ownership
+        if (! $flight || $flight->pilot_id !== $user->id) {
+            return response()->json(['message' => 'Flight not assigned to you.'], 403);
+        }
+
         Pirep::create([
             ...$data,
-            'flight_id' => $flight?->id,
+            'flight_id' => $flight->id,
             'pilot_id' => $user->id,
             'pilot_name' => $user->name,
-            'payout_cents' => $flight?->payout_cents ?? 0,
+            'payout_cents' => $flight->payout_cents,
         ]);
 
-        if ($flight !== null) {
-            $flight->update([
-                'status' => 'Completed',
-                'acars_status' => 'Completed',
-                'arrived_at' => now(),
-            ]);
-            $webhooks->dispatch($flight->fresh(), 'Flight completed');
-        }
+        $flight->update([
+            'status' => 'Completed',
+            'acars_status' => 'Completed',
+            'arrived_at' => now(),
+        ]);
+        $webhooks->dispatch($flight->fresh(), 'Flight completed');
 
         return response()->json([
             'message' => 'PIREP submitted for review.',

@@ -125,7 +125,12 @@ class AcarsApiTest extends TestCase
         $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         $user->update(['api_token' => 'pirep-token']);
 
-        Flight::factory()->create(['flight_number' => 'SKY777', 'payout_cents' => 15000]);
+        $flight = Flight::factory()->create([
+            'flight_number' => 'SKY777',
+            'pilot_id' => $user->id,
+            'pilot_name' => $user->name,
+            'payout_cents' => 15000,
+        ]);
 
         $response = $this->withHeader('Authorization', 'Bearer pirep-token')
             ->postJson('/api/acars/pireps', [

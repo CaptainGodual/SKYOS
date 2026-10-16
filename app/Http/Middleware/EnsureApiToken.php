@@ -28,6 +28,11 @@ class EnsureApiToken
             return response()->json(['message' => 'Invalid or expired token.'], 401);
         }
 
+        // Check if token has expired
+        if ($user->token_expires_at && $user->token_expires_at->isPast()) {
+            return response()->json(['message' => 'Token has expired. Please re-authenticate.'], 401);
+        }
+
         $request->attributes->set('acars_user', $user);
 
         return $next($request);

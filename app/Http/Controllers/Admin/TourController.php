@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTourRequest;
 use App\Http\Requests\UpdateTourRequest;
-use App\Models\Airport;
 use App\Models\Tour;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -25,9 +24,7 @@ class TourController extends Controller
 
     public function create(): View
     {
-        $airports = Airport::query()->orderBy('identifier')->get();
-
-        return view('admin.tours.create', ['airports' => $airports]);
+        return view('admin.tours.create');
     }
 
     public function store(StoreTourRequest $request): RedirectResponse
@@ -42,11 +39,9 @@ class TourController extends Controller
     public function edit(Tour $tour): View
     {
         $tour->load('legs.departureAirport', 'legs.arrivalAirport');
-        $airports = Airport::query()->orderBy('identifier')->get();
 
         return view('admin.tours.edit', [
             'tour' => $tour,
-            'airports' => $airports,
         ]);
     }
 
@@ -70,14 +65,22 @@ class TourController extends Controller
 
     public function addLeg(Tour $tour): RedirectResponse
     {
+        $validated = request()->validate([
+            'leg_number' => ['sometimes', 'integer', 'min:1'],
+            'departure_airport_id' => ['required', 'exists:airports,id'],
+            'arrival_airport_id' => ['required', 'exists:airports,id'],
+            'distance_nm' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0'],
+        ]);
+
         $lastLeg = $tour->legs()->max('leg_number') ?? 0;
 
         $tour->legs()->create([
-            'leg_number' => $lastLeg + 1,
-            'departure_airport_id' => request('departure_airport_id'),
-            'arrival_airport_id' => request('arrival_airport_id'),
-            'distance_nm' => request('distance_nm'),
-            'estimated_minutes' => request('estimated_minutes'),
+            'leg_number' => $validated['leg_number'] ?? ($lastLeg + 1),
+            'departure_airport_id' => $validated['departure_airport_id'],
+            'arrival_airport_id' => $validated['arrival_airport_id'],
+            'distance_nm' => $validated['distance_nm'],
+            'estimated_minutes' => $validated['estimated_minutes'],
         ]);
 
         return back()->with('success', 'Tour leg added.');

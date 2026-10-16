@@ -17,7 +17,7 @@ class UpdateDownloadRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'category' => ['sometimes', 'required', 'string', 'max:50'],
             'version' => ['nullable', 'string', 'max:20'],
-            'file' => ['sometimes', 'file', 'max:102400'],
+            'file' => ['sometimes', 'file', 'max:102400', 'mimes:pdf,zip,doc,docx,xls,xlsx,ppt,pptx,txt,csv,jpg,jpeg,png'],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }

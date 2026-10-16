@@ -30,7 +30,9 @@ class DownloadController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $filename = uniqid('dl_', true).'_'.$file->getClientOriginalName();
+            // Sanitize filename to prevent path traversal attacks
+            $originalName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+            $filename = uniqid('dl_', true).'_'.$originalName;
             $file->storeAs('downloads', $filename, 'local');
 
             $validated['file_path'] = $filename;
@@ -60,7 +62,9 @@ class DownloadController extends Controller
             }
 
             $file = $request->file('file');
-            $filename = uniqid('dl_', true).'_'.$file->getClientOriginalName();
+            // Sanitize filename to prevent path traversal attacks
+            $originalName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+            $filename = uniqid('dl_', true).'_'.$originalName;
             $file->storeAs('downloads', $filename, 'local');
 
             $validated['file_path'] = $filename;

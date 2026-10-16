@@ -66,28 +66,22 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label class="form-label" for="origin_airport_id">Origin airport <span class="text-body-secondary">(required)</span></label>
-                        <select class="form-select @error('origin_airport_id') is-invalid @enderror" id="origin_airport_id" name="origin_airport_id" required>
-                            <option value="">Select origin airport</option>
-                            @foreach ($airports as $airport)
-                                <option value="{{ $airport->id }}" {{ old('origin_airport_id', $tour->origin_airport_id) == $airport->id ? 'selected' : '' }}>
-                                    {{ $airport->identifier }} — {{ $airport->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="airport-search">
+                            <input class="form-control @error('origin_airport_id') is-invalid @enderror" id="origin_airport_search" type="text" value="{{ old('origin_airport_id', $tour->originAirport?->identifier ?? '') }}" placeholder="Search airports..." autocomplete="off">
+                            <input type="hidden" id="origin_airport_id" name="origin_airport_id" value="{{ old('origin_airport_id', $tour->originAirport?->id ?? '') }}" required>
+                            <div id="origin_airport_results" class="airport-results" style="display: none;"></div>
+                        </div>
                         @error('origin_airport_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="destination_airport_id">Destination airport <span class="text-body-secondary">(required)</span></label>
-                        <select class="form-select @error('destination_airport_id') is-invalid @enderror" id="destination_airport_id" name="destination_airport_id" required>
-                            <option value="">Select destination airport</option>
-                            @foreach ($airports as $airport)
-                                <option value="{{ $airport->id }}" {{ old('destination_airport_id', $tour->destination_airport_id) == $airport->id ? 'selected' : '' }}>
-                                    {{ $airport->identifier }} — {{ $airport->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="airport-search">
+                            <input class="form-control @error('destination_airport_id') is-invalid @enderror" id="destination_airport_search" type="text" value="{{ old('destination_airport_id', $tour->destinationAirport?->identifier ?? '') }}" placeholder="Search airports..." autocomplete="off">
+                            <input type="hidden" id="destination_airport_id" name="destination_airport_id" value="{{ old('destination_airport_id', $tour->destinationAirport?->id ?? '') }}" required>
+                            <div id="destination_airport_results" class="airport-results" style="display: none;"></div>
+                        </div>
                         @error('destination_airport_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -180,7 +174,6 @@
         </div>
     </div>
 
-    <!-- Add Leg Modal -->
     <div class="modal fade" id="addLegModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -194,21 +187,19 @@
                         <input type="hidden" name="leg_number" value="{{ ($tour->legs->max('leg_number') ?? 0) + 1 }}">
                         <div class="mb-3">
                             <label class="form-label">Departure airport <span class="text-body-secondary">(required)</span></label>
-                            <select class="form-select" name="departure_airport_id" required>
-                                <option value="">Select departure airport</option>
-                                @foreach ($airports as $airport)
-                                    <option value="{{ $airport->id }}">{{ $airport->identifier }} — {{ $airport->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="airport-search">
+                                <input class="form-control" id="leg_departure_airport_search" type="text" placeholder="Search departure airport..." autocomplete="off">
+                                <input type="hidden" name="departure_airport_id" id="leg_departure_airport_id" required>
+                                <div id="leg_departure_airport_results" class="airport-results" style="display: none;"></div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Arrival airport <span class="text-body-secondary">(required)</span></label>
-                            <select class="form-select" name="arrival_airport_id" required>
-                                <option value="">Select arrival airport</option>
-                                @foreach ($airports as $airport)
-                                    <option value="{{ $airport->id }}">{{ $airport->identifier }} — {{ $airport->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="airport-search">
+                                <input class="form-control" id="leg_arrival_airport_search" type="text" placeholder="Search arrival airport..." autocomplete="off">
+                                <input type="hidden" name="arrival_airport_id" id="leg_arrival_airport_id" required>
+                                <div id="leg_arrival_airport_results" class="airport-results" style="display: none;"></div>
+                            </div>
                         </div>
                         <div class="row g-2">
                             <div class="col-md-6 mb-3">
@@ -230,3 +221,98 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function initAirportSearch(searchInputId, hiddenInputId, resultsDivId, url) {
+        const searchInput = document.getElementById(searchInputId);
+        const hiddenInput = document.getElementById(hiddenInputId);
+        const resultsDiv = document.getElementById(resultsDivId);
+        let timeout;
+
+        searchInput.addEventListener('input', function () {
+            clearTimeout(timeout);
+            const query = this.value.trim();
+
+            if (query.length < 1) {
+                resultsDiv.style.display = 'none';
+                resultsDiv.innerHTML = '';
+                hiddenInput.value = '';
+                return;
+            }
+
+            timeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(url + '?query=' + encodeURIComponent(query));
+                    const data = await response.json();
+                    resultsDiv.innerHTML = '';
+
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(function (airport) {
+                            const div = document.createElement('div');
+                            div.className = 'airport-result';
+                            div.textContent = airport.text;
+                            div.dataset.id = airport.id;
+                            div.onclick = function () {
+                                searchInput.value = airport.text;
+                                hiddenInput.value = airport.id;
+                                resultsDiv.style.display = 'none';
+                                resultsDiv.innerHTML = '';
+                            };
+                            resultsDiv.appendChild(div);
+                        });
+                        resultsDiv.style.display = 'block';
+                    } else {
+                        resultsDiv.style.display = 'none';
+                    }
+                } catch (e) {
+                    console.error('Airport search error:', e);
+                }
+            }, 250);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initAirportSearch('origin_airport_search', 'origin_airport_id', 'origin_airport_results', '{{ route('admin.airports.search') }}');
+        initAirportSearch('destination_airport_search', 'destination_airport_id', 'destination_airport_results', '{{ route('admin.airports.search') }}');
+        initAirportSearch('leg_departure_airport_search', 'leg_departure_airport_id', 'leg_departure_airport_results', '{{ route('admin.airports.search') }}');
+        initAirportSearch('leg_arrival_airport_search', 'leg_arrival_airport_id', 'leg_arrival_airport_results', '{{ route('admin.airports.search') }}');
+    });
+</script>
+@endpush
+
+<style>
+    .airport-search {
+        position: relative;
+    }
+    .airport-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #d2d8e3;
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 1050;
+    }
+    .airport-result {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .airport-result:hover {
+        background-color: #f8fafc;
+    }
+    .airport-result:last-child {
+        border-bottom: none;
+    }
+</style>

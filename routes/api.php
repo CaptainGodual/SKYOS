@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('acars')->name('acars.')->group(function () {
-    Route::post('/login', [AcarsController::class, 'login'])->name('login');
+    Route::post('/login', [AcarsController::class, 'login'])->name('login')->middleware('throttle:5,1');
 
     Route::middleware('api.token')->group(function () {
         Route::get('/flights', [AcarsController::class, 'flights'])->name('flights');

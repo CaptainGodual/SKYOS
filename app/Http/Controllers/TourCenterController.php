@@ -62,6 +62,10 @@ class TourCenterController extends Controller
 
     public function book(Tour $tour): RedirectResponse
     {
+        if (! $tour->is_active) {
+            return back()->with('error', 'This tour is not available for booking.');
+        }
+
         $alreadyBooked = TourBooking::query()
             ->where('pilot_id', auth()->id())
             ->where('tour_id', $tour->id)

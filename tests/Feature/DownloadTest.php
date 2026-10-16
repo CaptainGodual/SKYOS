@@ -96,7 +96,7 @@ class DownloadTest extends TestCase
         $response = $this->actingAs($user)->get(route('downloads.download', $download));
 
         $response->assertStatus(200);
-        $response->assertHeader('Content-Disposition', 'attachment; filename="Test File"');
+        $response->assertHeader('Content-Disposition', 'attachment; filename=Test_File');
     }
 
     public function test_guest_cannot_download(): void

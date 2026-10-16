@@ -65,6 +65,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
         Route::get('/airports/import', [AirportController::class, 'import'])->name('airports.import');
         Route::post('/airports/import', [AirportController::class, 'performImport'])->name('airports.import.store');
         Route::put('/airports/{airport}/hub', [AirportController::class, 'toggleHub'])->name('airports.toggle-hub');
+        Route::get('/airports/search', [AirportController::class, 'search'])->name('airports.search')->middleware('throttle:60,1');
 
         Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');
         Route::get('/downloads/create', [DownloadController::class, 'create'])->name('downloads.create');

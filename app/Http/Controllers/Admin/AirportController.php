@@ -161,22 +161,28 @@ class AirportController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
-        $query = $request->string('query');
+        try {
+            $query = (string) $request->string('query', '');
 
-        $airports = Airport::query()
-            ->where(function ($q) use ($query): void {
-                $q->where('identifier', 'like', "%{$query}%")
-                    ->orWhere('name', 'like', "%{$query}%")
-                    ->orWhere('municipality', 'like', "%{$query}%");
-            })
-            ->orderBy('identifier')
-            ->limit(20)
-            ->get()
-            ->map(fn ($airport) => [
-                'id' => $airport->id,
-                'text' => $airport->identifier.' — '.$airport->name,
-            ]);
+            $airports = Airport::query()
+                ->where(function ($q) use ($query): void {
+                    $q->where('identifier', 'like', "%{$query}%")
+                        ->orWhere('name', 'like', "%{$query}%")
+                        ->orWhere('municipality', 'like', "%{$query}%");
+                })
+                ->orderBy('identifier')
+                ->limit(20)
+                ->get()
+                ->map(fn ($airport) => [
+                    'id' => $airport->id,
+                    'text' => $airport->identifier.' — '.$airport->name,
+                ]);
 
-        return response()->json(['results' => $airports->values()]);
+            return response()->json(['results' => $airports->values()]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

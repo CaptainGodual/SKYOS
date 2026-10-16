@@ -20,10 +20,18 @@ class DownloadController extends Controller
 
         $path = 'downloads/'.$download->file_path;
 
+        // Defense in depth: reject any path traversal attempts
+        if (str_contains($download->file_path, '..') || str_contains($download->file_path, '/') || str_contains($download->file_path, '\\')) {
+            abort(404, 'File not found.');
+        }
+
         if (! Storage::disk('local')->exists($path)) {
             abort(404, 'File not found.');
         }
 
-        return Storage::disk('local')->download($path, $download->name);
+        // Sanitize download filename for Content-Disposition header
+        $downloadName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $download->name);
+
+        return Storage::disk('local')->download($path, $downloadName);
     }
 }
