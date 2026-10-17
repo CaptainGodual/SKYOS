@@ -15,6 +15,16 @@ class FlightExpense extends Model
     use HasFactory;
 
     /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
+
+    /**
      * Get the airports where this expense applies.
      */
     public function airports(): BelongsToMany
@@ -28,6 +38,22 @@ class FlightExpense extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to the expenses that apply to the given airport identifiers.
+     *
+     * An expense with no airports assigned is a fleet-wide cost and applies to
+     * every flight, which is what the admin form promises.
+     *
+     * @param  array<int, string>  $identifiers
+     */
+    public function scopeForAirports($query, array $identifiers)
+    {
+        return $query->where(function ($query) use ($identifiers): void {
+            $query->whereDoesntHave('airports')
+                ->orWhereHas('airports', fn ($query) => $query->whereIn('identifier', $identifiers));
+        });
     }
 
     /**

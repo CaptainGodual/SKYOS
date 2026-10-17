@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
-use App\Models\Airport;
 use App\Models\FlightExpense;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -33,12 +32,8 @@ class ExpenseController extends Controller
      */
     public function create(): View
     {
-        $airports = Airport::query()
-            ->orderBy('identifier')
-            ->get();
-
         return view('admin.expenses.create', [
-            'airports' => $airports,
+            'selectedAirports' => collect(),
         ]);
     }
 
@@ -47,11 +42,10 @@ class ExpenseController extends Controller
      */
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
-        $expense = FlightExpense::query()->create($request->safe()->only(['name', 'category', 'description', 'cost_cents', 'is_active']));
+        $expense = FlightExpense::query()->create($this->attributes($request));
 
-        // Attach selected airports
-        $airportIds = $request->validated('airport_ids') ?? [];
-        $expense->airports()->attach($airportIds);
+        // Attach the airports this expense applies to.
+        $expense->airports()->attach($this->airportIds($request->validated('airport_ids')));
 
         return redirect()
             ->route('admin.expenses.index')
@@ -64,13 +58,10 @@ class ExpenseController extends Controller
     public function edit(FlightExpense $expense): View
     {
         $expense->load('airports');
-        $airports = Airport::query()
-            ->orderBy('identifier')
-            ->get();
 
         return view('admin.expenses.edit', [
             'expense' => $expense,
-            'airports' => $airports,
+            'selectedAirports' => $expense->airports,
         ]);
     }
 
@@ -79,11 +70,10 @@ class ExpenseController extends Controller
      */
     public function update(UpdateExpenseRequest $request, FlightExpense $expense): RedirectResponse
     {
-        $expense->update($request->safe()->only(['name', 'category', 'description', 'cost_cents', 'is_active']));
+        $expense->update($this->attributes($request));
 
-        // Sync airports
-        $airportIds = $request->validated('airport_ids') ?? [];
-        $expense->airports()->sync($airportIds);
+        // Sync the airports this expense applies to.
+        $expense->airports()->sync($this->airportIds($request->validated('airport_ids')));
 
         return redirect()
             ->route('admin.expenses.index')
@@ -100,5 +90,43 @@ class ExpenseController extends Controller
         return redirect()
             ->route('admin.expenses.index')
             ->with('success', 'Expense deleted successfully.');
+    }
+
+    /**
+     * Build the model attributes from the validated expense form input.
+     *
+     * The admin enters the cost in dollars; it is always stored in whole cents.
+     *
+     * @return array<string, mixed>
+     */
+    private function attributes(StoreExpenseRequest|UpdateExpenseRequest $request): array
+    {
+        $attributes = $request->safe()->only(['name', 'category', 'description']);
+
+        if ($request->has('is_active')) {
+            $attributes['is_active'] = $request->boolean('is_active');
+        }
+
+        if ($request->has('cost_cents')) {
+            $attributes['cost_cents'] = (int) round(((float) $request->validated('cost_cents')) * 100);
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Normalise the submitted airport ids, dropping blank entries and duplicates.
+     *
+     * @param  array<int, mixed>|null  $airportIds
+     * @return array<int, int>
+     */
+    private function airportIds(?array $airportIds): array
+    {
+        return collect($airportIds ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

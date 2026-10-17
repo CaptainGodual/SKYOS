@@ -182,6 +182,7 @@ class AirportController extends Controller
                 ->get()
                 ->map(fn ($airport) => [
                     'id' => $airport->id,
+                    'identifier' => $airport->identifier,
                     'text' => $airport->identifier.' — '.$airport->name,
                 ]);
 

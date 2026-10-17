@@ -69,17 +69,13 @@
 
                 <div class="row g-3 mb-4">
                     <div class="col-12">
-                        <label class="form-label" for="airport_ids">Applicable Airports <span class="text-body-secondary">(optional)</span></label>
-                        <div class="airport-search">
-                            <input class="form-control" id="airport_search" type="text" placeholder="Search airports..." autocomplete="off">
-                            <input type="hidden" id="airport_ids" name="airport_ids[]" />
-                            <div id="airport_results" class="airport-results" style="display: none;"></div>
-                        </div>
-                        <div class="form-text">Select one or more airports where this expense applies. Leave blank for all airports.</div>
+                        <label class="form-label" for="airport_search">Applicable Airports <span class="text-body-secondary">(optional)</span></label>
+                        @include('admin.expenses._airport_picker')
                     </div>
                 </div>
 
                 <div class="mb-3 form-check">
+                    <input name="is_active" type="hidden" value="0">
                     <input class="form-check-input" id="is_active" name="is_active" type="checkbox" value="1" {{ old('is_active', true) ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Active</label>
                 </div>
@@ -92,104 +88,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-<script>
-    function initAirportSearch(searchInputId, hiddenInputId, resultsDivId, url) {
-        const searchInput = document.getElementById(searchInputId);
-        const hiddenInput = document.getElementById(hiddenInputId);
-        const resultsDiv = document.getElementById(resultsDivId);
-        let timeout;
-        let selectedIds = [];
-
-        searchInput.addEventListener('input', function () {
-            clearTimeout(timeout);
-            const query = this.value.trim();
-
-            if (query.length < 1) {
-                resultsDiv.style.display = 'none';
-                resultsDiv.innerHTML = '';
-                return;
-            }
-
-            timeout = setTimeout(async () => {
-                try {
-                    const response = await fetch(url + '?query=' + encodeURIComponent(query));
-                    const data = await response.json();
-                    resultsDiv.innerHTML = '';
-
-                    if (data.results && data.results.length > 0) {
-                        data.results.forEach(function (airport) {
-                            const div = document.createElement('div');
-                            div.className = 'airport-result';
-                            div.textContent = airport.text;
-                            div.dataset.id = airport.id;
-                            div.onclick = function () {
-                                const id = airport.id;
-                                if (!selectedIds.includes(id)) {
-                                    selectedIds.push(id);
-                                    hiddenInput.value = selectedIds.join(',');
-                                    searchInput.value = '';
-                                    resultsDiv.style.display = 'none';
-                                    resultsDiv.innerHTML = '';
-                                    renderSelected();
-                                }
-                            };
-                            resultsDiv.appendChild(div);
-                        });
-                        resultsDiv.style.display = 'block';
-                    } else {
-                        resultsDiv.style.display = 'none';
-                    }
-                } catch (e) {
-                    console.error('Airport search error:', e);
-                }
-            }, 250);
-        });
-
-        function renderSelected() {
-            // Clear and re-render selected chips if needed
-        }
-
-        document.addEventListener('click', function (e) {
-            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
-                resultsDiv.style.display = 'none';
-            }
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        initAirportSearch('airport_search', 'airport_ids', 'airport_results', '{{ route('admin.airports.search') }}');
-    });
-</script>
-@endpush
-
-<style>
-    .airport-search {
-        position: relative;
-    }
-    .airport-results {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        max-height: 300px;
-        overflow-y: auto;
-        background: #fff;
-        border: 1px solid #d2d8e3;
-        border-radius: 0.375rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        z-index: 1050;
-    }
-    .airport-result {
-        padding: 8px 12px;
-        cursor: pointer;
-        border-bottom: 1px solid #f1f5f9;
-    }
-    .airport-result:hover {
-        background-color: #f8fafc;
-    }
-    .airport-result:last-child {
-        border-bottom: none;
-    }
-</style>

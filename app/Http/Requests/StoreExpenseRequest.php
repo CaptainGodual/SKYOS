@@ -26,10 +26,10 @@ class StoreExpenseRequest extends FormRequest
             'name' => ['required', 'string', 'max:100'],
             'category' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:500'],
-            'cost_cents' => ['required', 'integer', 'min:0'],
+            'cost_cents' => ['required', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
             'airport_ids' => ['nullable', 'array'],
-            'airport_ids.*' => ['exists:airports,id'],
+            'airport_ids.*' => ['nullable', 'integer', 'exists:airports,id'],
         ];
     }
 
