@@ -1,0 +1,17 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Flight Booking Limit
+    |--------------------------------------------------------------------------
+    |
+    | The number of flights a pilot may hold at the same time. Flights that are
+    | booked or in the air both count towards the limit. Set to 0 for no limit.
+    |
+    */
+
+    'max_booked_flights' => env('SKYOS_MAX_BOOKED_FLIGHTS', 3),
+
+];

@@ -29,7 +29,7 @@ class FlightWebhookDispatcher
             'payload' => $payload,
         ]);
 
-        $webhookUrl = config('discord.webhook_url');
+        $webhookUrl = config('services.discord.webhook_url');
 
         if (blank($webhookUrl)) {
             return $event;

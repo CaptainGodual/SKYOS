@@ -71,7 +71,7 @@ class AcarsApiTest extends TestCase
 
     public function test_acars_can_list_flights_and_report_event(): void
     {
-        config()->set('discord.webhook_url', 'https://discord.com/api/webhooks/123/token');
+        config()->set('services.discord.webhook_url', 'https://discord.com/api/webhooks/123/token');
         Http::preventStrayRequests();
         Http::fake(['https://discord.com/api/webhooks/123/token' => Http::response([], 200)]);
 
@@ -209,8 +209,8 @@ class AcarsApiTest extends TestCase
             ->postJson('/api/acars/pireps', $payload)
             ->assertStatus(409);
 
-        // The payout expense must not be recorded a second time.
+        // Nothing is settled while the report is pending review.
         $this->assertDatabaseCount('pireps', 1);
-        $this->assertDatabaseCount('financial_transactions', 1);
+        $this->assertDatabaseCount('financial_transactions', 0);
     }
 }

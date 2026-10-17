@@ -31,10 +31,10 @@ Route::post('/logout', [LoginController::class, 'destroy'])
 
 Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/', [CrewCenterController::class, 'index'])->name('crew-center.index');
-    Route::post('/flights/{flight}/book', [CrewCenterController::class, 'book'])->name('flights.book');
-    Route::post('/flights/{flight}/events', [CrewCenterController::class, 'dispatchFlightEvent'])->name('flights.events.store');
-    Route::post('/pireps', [CrewCenterController::class, 'storePirep'])->name('pireps.store');
-    Route::post('/messages', [CrewCenterController::class, 'storeMessage'])->name('messages.store');
+    Route::post('/flights/{flight}/book', [CrewCenterController::class, 'book'])->name('flights.book')->middleware('throttle:30,1');
+    Route::post('/flights/{flight}/events', [CrewCenterController::class, 'dispatchFlightEvent'])->name('flights.events.store')->middleware('throttle:30,1');
+    Route::post('/pireps', [CrewCenterController::class, 'storePirep'])->name('pireps.store')->middleware('throttle:12,1');
+    Route::post('/messages', [CrewCenterController::class, 'storeMessage'])->name('messages.store')->middleware('throttle:10,1');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -42,7 +42,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/tours', [TourCenterController::class, 'index'])->name('tours.index');
     Route::get('/tours/my', [TourCenterController::class, 'myTours'])->name('tours.my');
     Route::get('/tours/{tour}', [TourCenterController::class, 'show'])->name('tours.show');
-    Route::post('/tours/{tour}/book', [TourCenterController::class, 'book'])->name('tours.book');
+    Route::post('/tours/{tour}/book', [TourCenterController::class, 'book'])->name('tours.book')->middleware('throttle:10,1');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');

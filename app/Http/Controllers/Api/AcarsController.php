@@ -8,9 +8,7 @@ use App\Http\Requests\AcarsEventRequest;
 use App\Http\Requests\AcarsLoginRequest;
 use App\Http\Requests\AcarsPirepRequest;
 use App\Models\ApiToken;
-use App\Models\FinancialTransaction;
 use App\Models\Flight;
-use App\Models\FlightExpense;
 use App\Models\Pirep;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -188,37 +186,8 @@ class AcarsController extends Controller
         ]);
         $webhooks->dispatch($flight->fresh(), 'Flight completed');
 
-        // Record pilot payout as expense (money going OUT to pilot)
-        if ($flight->payout_cents > 0) {
-            FinancialTransaction::create([
-                'type' => 'expense',
-                'category' => 'Pilot Payout',
-                'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
-                'amount_cents' => -abs($flight->payout_cents),
-                'reference_type' => 'pirep',
-                'reference_id' => $flight->id,
-            ]);
-        }
-
-        // Record airport expenses for departure and arrival airports
-        $airportIds = [$flight->departure, $flight->arrival];
-        $expenses = FlightExpense::query()
-            ->where('is_active', true)
-            ->whereHas('airports', function ($q) use ($airportIds) {
-                $q->whereIn('identifier', $airportIds);
-            })
-            ->get();
-
-        foreach ($expenses as $expense) {
-            FinancialTransaction::create([
-                'type' => 'expense',
-                'category' => $expense->category,
-                'description' => "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
-                'amount_cents' => -abs($expense->cost_cents),
-                'reference_type' => 'pirep',
-                'reference_id' => $flight->id,
-            ]);
-        }
+        // No money moves yet: the payout and the airport expenses are booked
+        // once an administrator approves the report (see PirepSettlement).
 
         return response()->json([
             'message' => 'PIREP submitted for review.',

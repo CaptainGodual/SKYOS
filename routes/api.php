@@ -21,6 +21,6 @@ Route::prefix('acars')->name('acars.')->group(function () {
         Route::get('/flights', [AcarsController::class, 'flights'])->name('flights');
         Route::get('/flights/{flight}', [AcarsController::class, 'flight'])->name('flights.show');
         Route::post('/flights/{flight}/event', [AcarsController::class, 'event'])->name('flights.event');
-        Route::post('/pireps', [AcarsController::class, 'storePirep'])->name('pireps.store');
+        Route::post('/pireps', [AcarsController::class, 'storePirep'])->name('pireps.store')->middleware('throttle:12,1');
     });
 });

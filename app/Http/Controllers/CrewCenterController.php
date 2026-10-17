@@ -6,9 +6,7 @@ use App\FlightWebhookDispatcher;
 use App\Http\Requests\StorePirepRequest;
 use App\Models\CrewMessage;
 use App\Models\Download;
-use App\Models\FinancialTransaction;
 use App\Models\Flight;
-use App\Models\FlightExpense;
 use App\Models\Pirep;
 use App\Models\WebhookEvent;
 use Illuminate\Http\RedirectResponse;
@@ -48,7 +46,7 @@ class CrewCenterController extends Controller
             'stats' => [
                 'hours' => round($pireps->sum('block_minutes') / 60, 1),
                 'income_cents' => $pireps
-                    ->whereIn('status', ['Approved', 'Paid'])
+                    ->whereIn('status', Pirep::ACCEPTED_STATUSES)
                     ->sum('payout_cents'),
                 'pending' => $pireps->where('status', 'Pending review')->count(),
                 'pirep_count' => $pireps->count(),
@@ -64,6 +62,21 @@ class CrewCenterController extends Controller
     {
         if ($flight->status !== 'Open' || $flight->pilot_id !== null) {
             return back()->with('error', 'This flight is no longer available.');
+        }
+
+        // Bound how much a single pilot can settle into the books at once.
+        // `0` disables the limit.
+        $limit = (int) config('skyos.max_booked_flights');
+
+        if ($limit > 0) {
+            $booked = Flight::query()
+                ->where('pilot_id', $request->user()->id)
+                ->where('status', 'Booked')
+                ->count();
+
+            if ($booked >= $limit) {
+                return back()->with('error', "You already have {$limit} flights on your roster. Complete or release one before booking another.");
+            }
         }
 
         $flight->update([
@@ -104,37 +117,8 @@ class CrewCenterController extends Controller
         ]);
         $webhooks->dispatch($flight->fresh(), 'Flight completed');
 
-        // Record pilot payout as expense (money going OUT to pilot)
-        if ($flight->payout_cents > 0) {
-            FinancialTransaction::create([
-                'type' => 'expense',
-                'category' => 'Pilot Payout',
-                'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
-                'amount_cents' => -abs($flight->payout_cents),
-                'reference_type' => 'pirep',
-                'reference_id' => $flight->id,
-            ]);
-        }
-
-        // Record airport expenses for departure and arrival airports
-        $airportIds = [$flight->departure, $flight->arrival];
-        $expenses = FlightExpense::query()
-            ->where('is_active', true)
-            ->whereHas('airports', function ($q) use ($airportIds) {
-                $q->whereIn('identifier', $airportIds);
-            })
-            ->get();
-
-        foreach ($expenses as $expense) {
-            FinancialTransaction::create([
-                'type' => 'expense',
-                'category' => $expense->category,
-                'description' => "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
-                'amount_cents' => -abs($expense->cost_cents),
-                'reference_type' => 'pirep',
-                'reference_id' => $flight->id,
-            ]);
-        }
+        // No money moves yet: the payout and the airport expenses are booked
+        // once an administrator approves the report (see PirepSettlement).
 
         return back()->with('success', 'Your manual PIREP has been submitted for review.');
     }
