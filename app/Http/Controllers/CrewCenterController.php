@@ -81,53 +81,59 @@ class CrewCenterController extends Controller
         $data = $request->validated();
         $flight = Flight::query()->where('flight_number', $data['flight_number'])->first();
 
+        if (! $flight || $flight->pilot_id !== $user->id) {
+            return back()->with('error', 'That flight is not assigned to you. Book it from the crew centre first.');
+        }
+
+        if (Pirep::query()->where('flight_id', $flight->id)->exists()) {
+            return back()->with('error', 'A PIREP has already been filed for this flight.');
+        }
+
         Pirep::create([
             ...$data,
-            'flight_id' => $flight?->id,
+            'flight_id' => $flight->id,
             'pilot_id' => $user->id,
             'pilot_name' => $user->name,
-            'payout_cents' => $flight?->payout_cents ?? 0,
+            'payout_cents' => $flight->payout_cents,
         ]);
 
-        if ($flight !== null) {
-            $flight->update([
-                'status' => 'Completed',
-                'acars_status' => 'Completed',
-                'arrived_at' => now(),
+        $flight->update([
+            'status' => 'Completed',
+            'acars_status' => 'Completed',
+            'arrived_at' => now(),
+        ]);
+        $webhooks->dispatch($flight->fresh(), 'Flight completed');
+
+        // Record pilot payout as expense (money going OUT to pilot)
+        if ($flight->payout_cents > 0) {
+            FinancialTransaction::create([
+                'type' => 'expense',
+                'category' => 'Pilot Payout',
+                'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
+                'amount_cents' => -abs($flight->payout_cents),
+                'reference_type' => 'pirep',
+                'reference_id' => $flight->id,
             ]);
-            $webhooks->dispatch($flight->fresh(), 'Flight completed');
+        }
 
-            // Record pilot payout as expense (money going OUT to pilot)
-            if ($flight->payout_cents > 0) {
-                FinancialTransaction::create([
-                    'type' => 'expense',
-                    'category' => 'Pilot Payout',
-                    'description' => "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
-                    'amount_cents' => -abs($flight->payout_cents),
-                    'reference_type' => 'pirep',
-                    'reference_id' => $flight->id,
-                ]);
-            }
+        // Record airport expenses for departure and arrival airports
+        $airportIds = [$flight->departure, $flight->arrival];
+        $expenses = FlightExpense::query()
+            ->where('is_active', true)
+            ->whereHas('airports', function ($q) use ($airportIds) {
+                $q->whereIn('identifier', $airportIds);
+            })
+            ->get();
 
-            // Record airport expenses for departure and arrival airports
-            $airportIds = [$flight->departure, $flight->arrival];
-            $expenses = FlightExpense::query()
-                ->where('is_active', true)
-                ->whereHas('airports', function ($q) use ($airportIds) {
-                    $q->whereIn('identifier', $airportIds);
-                })
-                ->get();
-
-            foreach ($expenses as $expense) {
-                FinancialTransaction::create([
-                    'type' => 'expense',
-                    'category' => $expense->category,
-                    'description' => "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
-                    'amount_cents' => -abs($expense->cost_cents),
-                    'reference_type' => 'pirep',
-                    'reference_id' => $flight->id,
-                ]);
-            }
+        foreach ($expenses as $expense) {
+            FinancialTransaction::create([
+                'type' => 'expense',
+                'category' => $expense->category,
+                'description' => "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
+                'amount_cents' => -abs($expense->cost_cents),
+                'reference_type' => 'pirep',
+                'reference_id' => $flight->id,
+            ]);
         }
 
         return back()->with('success', 'Your manual PIREP has been submitted for review.');
@@ -148,9 +154,17 @@ class CrewCenterController extends Controller
 
     public function dispatchFlightEvent(Request $request, Flight $flight, FlightWebhookDispatcher $webhooks): RedirectResponse
     {
+        if ($flight->pilot_id !== $request->user()->id) {
+            return back()->with('error', 'That flight is not assigned to you.');
+        }
+
         $data = $request->validate([
             'event_type' => ['required', 'in:Flight took off,Flight canceled,Flight completed'],
         ]);
+
+        if ($data['event_type'] === 'Flight completed' && $flight->status === 'Completed') {
+            return back()->with('error', 'This flight has already been completed.');
+        }
 
         $status = match ($data['event_type']) {
             'Flight took off' => ['status' => 'Booked', 'acars_status' => 'En Route', 'departed_at' => now()],

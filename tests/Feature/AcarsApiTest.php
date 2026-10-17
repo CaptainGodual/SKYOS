@@ -176,4 +176,41 @@ class AcarsApiTest extends TestCase
             'status' => 'Pending review',
         ]);
     }
+
+    public function test_acars_cannot_submit_two_pireps_for_the_same_flight(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        ApiToken::create([
+            'user_id' => $user->id,
+            'token' => ApiToken::hashToken('duplicate-token'),
+            'name' => 'Duplicate Token',
+            'expires_at' => now()->addHours(24),
+        ]);
+
+        Flight::factory()->create([
+            'flight_number' => 'SKY888',
+            'pilot_id' => $user->id,
+            'pilot_name' => $user->name,
+            'payout_cents' => 9000,
+        ]);
+
+        $payload = [
+            'flight_number' => 'SKY888',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 62,
+        ];
+
+        $this->withHeader('Authorization', 'Bearer duplicate-token')
+            ->postJson('/api/acars/pireps', $payload)
+            ->assertStatus(201);
+
+        $this->withHeader('Authorization', 'Bearer duplicate-token')
+            ->postJson('/api/acars/pireps', $payload)
+            ->assertStatus(409);
+
+        // The payout expense must not be recorded a second time.
+        $this->assertDatabaseCount('pireps', 1);
+        $this->assertDatabaseCount('financial_transactions', 1);
+    }
 }

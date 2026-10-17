@@ -169,6 +169,10 @@ class AcarsController extends Controller
             return response()->json(['message' => 'Flight not assigned to you.'], 403);
         }
 
+        if (Pirep::query()->where('flight_id', $flight->id)->exists()) {
+            return response()->json(['message' => 'A PIREP has already been filed for this flight.'], 409);
+        }
+
         Pirep::create([
             ...$data,
             'flight_id' => $flight->id,
