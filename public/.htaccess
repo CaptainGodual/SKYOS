@@ -18,6 +18,14 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Send The Bare Directory Request To The Front Controller...
+    # "/" resolves to this folder, so the "!-d" guard below skips it and Apache
+    # answers the request itself. With no index file to serve and directory
+    # listings off, that is a 403 - the page a visitor gets on the bare domain,
+    # including the redirect that follows a sign-in. Rewriting the empty path
+    # keeps "/" working even when the server has no DirectoryIndex index.php.
+    RewriteRule ^/?$ index.php [L]
+
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
