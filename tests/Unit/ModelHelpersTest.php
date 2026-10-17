@@ -1,0 +1,55 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Models\ApiToken;
+use App\Models\Flight;
+use App\Models\Pirep;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Pure logic that needs neither a database nor a booted application.
+ */
+class ModelHelpersTest extends TestCase
+{
+    public function test_tokens_are_hashed_deterministically(): void
+    {
+        $hash = ApiToken::hashToken('a-high-entropy-token');
+
+        $this->assertSame(hash('sha256', 'a-high-entropy-token'), $hash);
+        $this->assertSame($hash, ApiToken::hashToken('a-high-entropy-token'));
+        $this->assertNotSame($hash, ApiToken::hashToken('a-high-entropy-token '));
+    }
+
+    public function test_it_knows_which_pirep_statuses_have_been_accepted(): void
+    {
+        $pirep = new Pirep;
+
+        foreach (Pirep::ACCEPTED_STATUSES as $status) {
+            $pirep->status = $status;
+
+            $this->assertTrue($pirep->isAccepted(), "{$status} should count as accepted.");
+        }
+
+        $rejected = array_diff(Pirep::STATUSES, Pirep::ACCEPTED_STATUSES);
+
+        $this->assertNotEmpty($rejected);
+
+        foreach ($rejected as $status) {
+            $pirep->status = $status;
+
+            $this->assertFalse($pirep->isAccepted(), "{$status} should not count as accepted.");
+        }
+    }
+
+    public function test_the_accepted_statuses_are_all_valid_statuses(): void
+    {
+        $this->assertEmpty(array_diff(Pirep::ACCEPTED_STATUSES, Pirep::STATUSES));
+        $this->assertSame(Pirep::STATUSES, array_values(array_unique(Pirep::STATUSES)));
+    }
+
+    public function test_a_flight_status_list_covers_the_four_schedule_states(): void
+    {
+        $this->assertSame(['Open', 'Booked', 'Canceled', 'Completed'], Flight::STATUSES);
+    }
+}

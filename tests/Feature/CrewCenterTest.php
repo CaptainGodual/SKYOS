@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Airport;
+use App\Models\CrewMessage;
 use App\Models\FinancialTransaction;
 use App\Models\Flight;
 use App\Models\FlightExpense;
 use App\Models\Pirep;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -446,5 +448,128 @@ class CrewCenterTest extends TestCase
         }
 
         $this->assertSame(4, Flight::query()->where('pilot_id', $user->id)->where('status', 'Booked')->count());
+    }
+
+    public function test_the_payout_comes_from_the_pirep_not_a_later_route_edit(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $flight = Flight::factory()->create([
+            'flight_number' => 'SKY258',
+            'pilot_id' => $user->id,
+            'payout_cents' => 10000,
+        ]);
+
+        $this->actingAs($user)->post(route('pireps.store'), [
+            'flight_number' => 'SKY258',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 60,
+        ])->assertRedirect();
+
+        // Dispatch repriced the route after the report was filed. The pilot is
+        // still owed what the report promised them.
+        $flight->update(['payout_cents' => 99900]);
+
+        $this->actingAs($admin)->put(
+            route('admin.pireps.update', Pirep::query()->sole()),
+            ['status' => 'Approved'],
+        );
+
+        $this->assertDatabaseHas(FinancialTransaction::class, [
+            'category' => 'Pilot Payout',
+            'amount_cents' => -10000,
+        ]);
+    }
+
+    public function test_a_failing_webhook_does_not_break_a_flight_event(): void
+    {
+        config()->set('services.discord.webhook_url', 'https://discord.com/api/webhooks/123/token');
+        Http::fake(fn () => throw new ConnectionException('Endpoint unreachable'));
+
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $flight = Flight::factory()->create(['flight_number' => 'SKY320', 'pilot_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->post(route('flights.events.store', $flight), ['event_type' => 'Flight took off'])
+            ->assertSessionHas('success');
+
+        $this->assertSame('En Route', $flight->fresh()->acars_status);
+        $this->assertDatabaseHas('webhook_events', [
+            'flight_id' => $flight->id,
+            'event_type' => 'Flight took off',
+            'status' => 'Failed',
+        ]);
+    }
+
+    public function test_a_message_must_be_addressed_to_a_real_crew_member(): void
+    {
+        $user = User::factory()->create([
+            'approval_status' => User::APPROVAL_APPROVED,
+            'name' => 'Piper Alpha',
+        ]);
+
+        $this->actingAs($user)->post(route('messages.store'), [
+            'recipient_name' => 'Nobody At All',
+            'subject' => 'Hello?',
+            'body' => 'Is anybody there?',
+        ])->assertSessionHasErrors('recipient_name');
+
+        $this->assertDatabaseCount('crew_messages', 0);
+    }
+
+    public function test_a_message_reaches_the_named_pilot(): void
+    {
+        $sender = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED, 'name' => 'Piper Alpha']);
+        $recipient = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED, 'name' => 'Bravo Tango']);
+
+        $this->actingAs($sender)->post(route('messages.store'), [
+            'recipient_name' => 'Bravo Tango',
+            'subject' => 'Roster swap',
+            'body' => 'Can you take my Tuesday rotation?',
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas(CrewMessage::class, [
+            'sender_name' => 'Piper Alpha',
+            'recipient_name' => 'Bravo Tango',
+        ]);
+
+        $this->actingAs($recipient)->get('/')->assertSee('Roster swap');
+    }
+
+    public function test_the_dashboard_shows_the_pilots_own_totals(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $otherPilot = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+
+        Pirep::factory()->create([
+            'pilot_id' => $user->id,
+            'pilot_name' => $user->name,
+            'block_minutes' => 120,
+            'payout_cents' => 25000,
+            'status' => 'Approved',
+        ]);
+        Pirep::factory()->create([
+            'pilot_id' => $user->id,
+            'pilot_name' => $user->name,
+            'block_minutes' => 60,
+            'payout_cents' => 10000,
+            'status' => 'Pending review',
+        ]);
+        // Another pilot's approved report must not land in these totals.
+        Pirep::factory()->create([
+            'pilot_id' => $otherPilot->id,
+            'pilot_name' => $otherPilot->name,
+            'block_minutes' => 300,
+            'payout_cents' => 90000,
+            'status' => 'Approved',
+        ]);
+
+        $response = $this->actingAs($user)->get('/');
+
+        $response->assertOk();
+        $response->assertSee('3.0');
+        $response->assertSee('250.00');
+        $response->assertSee('Across 2 logged PIREPs');
     }
 }

@@ -18,7 +18,15 @@ class PirepFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'pilot_name' => fake()->name(),
+            'flight_number' => 'SKY'.fake()->unique()->numberBetween(100, 999),
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => fake()->numberBetween(45, 480),
+            'landing_rate' => fake()->numberBetween(60, 240),
+            'payout_cents' => fake()->numberBetween(5_000, 50_000),
+            'remarks' => fake()->sentence(),
+            'status' => 'Pending review',
         ];
     }
 }

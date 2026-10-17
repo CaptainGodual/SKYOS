@@ -213,4 +213,22 @@ class AcarsApiTest extends TestCase
         $this->assertDatabaseCount('pireps', 1);
         $this->assertDatabaseCount('financial_transactions', 0);
     }
+
+    public function test_a_token_stops_working_when_the_pilot_is_rejected(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        ApiToken::create([
+            'user_id' => $user->id,
+            'token' => ApiToken::hashToken('revoked-token'),
+            'name' => 'Revoked Token',
+            'expires_at' => now()->addHours(24),
+        ]);
+
+        // The administrator rejects the account while the token is still valid.
+        $user->update(['approval_status' => User::APPROVAL_REJECTED]);
+
+        $this->withHeader('Authorization', 'Bearer revoked-token')
+            ->getJson('/api/acars/flights')
+            ->assertStatus(403);
+    }
 }

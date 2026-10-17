@@ -156,4 +156,38 @@ class AirportImportTest extends TestCase
         $this->actingAs($admin)->put(route('admin.airports.toggle-hub', $airport));
         $this->assertFalse((bool) $airport->fresh()->is_hub);
     }
+
+    public function test_the_hub_flag_is_cast_to_a_boolean(): void
+    {
+        $airport = Airport::factory()->create(['is_hub' => true]);
+
+        $this->assertTrue($airport->fresh()->is_hub);
+    }
+
+    public function test_a_malformed_row_does_not_break_the_whole_import(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        // The middle row is one column short. array_combine() throws a
+        // ValueError on PHP 8 for mismatched lengths, so a single broken line
+        // used to take the entire import down with a 500.
+        $csv = "identifier,iata_code,icao_code,name,type,latitude,longitude,elevation,country_code,region_code,municipality,time_zone\n"
+            ."KJFK,JFK,KJFK,John F. Kennedy International Airport,large_airport,40.6413,-73.7781,13,US,US-NY,New York,America/New_York\n"
+            ."EGLL,,EGLL,London Heathrow Airport,large_airport,51.4700,-0.4543,83,GB,GB-ENG,London\n"
+            ."KLAX,LAX,KLAX,Los Angeles International Airport,large_airport,33.9425,-118.4081,126,US,US-CA,Los Angeles,America/Los_Angeles\n";
+
+        $path = tempnam(sys_get_temp_dir(), 'airport_');
+        file_put_contents($path, $csv);
+
+        $uploaded = new UploadedFile($path, 'airports.csv', 'text/csv', null, true);
+
+        $response = $this->actingAs($admin)->post(route('admin.airports.import.store'), [
+            'file' => $uploaded,
+        ]);
+
+        $response->assertRedirect(route('admin.airports.index'));
+        $response->assertSessionHas('success');
+        $this->assertDatabaseCount('airports', 2);
+        $this->assertDatabaseMissing('airports', ['identifier' => 'EGLL']);
+    }
 }

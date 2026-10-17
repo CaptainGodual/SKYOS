@@ -173,4 +173,51 @@ class TourCenterTest extends TestCase
 
         $this->assertDatabaseHas('tour_legs', ['id' => $leg->id]);
     }
+
+    public function test_a_pilot_can_rebook_a_tour_they_cancelled(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $tour = Tour::factory()->create(['is_active' => true]);
+
+        // The table holds one row per pilot and tour, so re-booking has to
+        // reuse the cancelled row instead of inserting a duplicate.
+        TourBooking::factory()->create([
+            'tour_id' => $tour->id,
+            'pilot_id' => $user->id,
+            'status' => TourBooking::STATUS_CANCELLED,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)->post(route('tours.book', $tour))->assertSessionHas('success');
+
+        $this->assertDatabaseCount('tour_bookings', 1);
+        $this->assertDatabaseHas('tour_bookings', [
+            'tour_id' => $tour->id,
+            'pilot_id' => $user->id,
+            'status' => TourBooking::STATUS_BOOKED,
+            'completed_at' => null,
+        ]);
+    }
+
+    public function test_admin_can_deactivate_a_tour_from_the_edit_form(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $origin = Airport::factory()->create();
+        $destination = Airport::factory()->create();
+        $tour = Tour::factory()->create([
+            'origin_airport_id' => $origin->id,
+            'destination_airport_id' => $destination->id,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)->put(route('admin.tours.update', $tour), [
+            'name' => $tour->name,
+            'price_cents' => 15000,
+            'origin_airport_id' => $origin->id,
+            'destination_airport_id' => $destination->id,
+            'is_active' => '0',
+        ])->assertRedirect();
+
+        $this->assertFalse((bool) $tour->fresh()->is_active);
+    }
 }

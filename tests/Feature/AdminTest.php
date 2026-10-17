@@ -100,6 +100,48 @@ class AdminTest extends TestCase
         $this->assertDatabaseMissing('flights', ['id' => $flight->id]);
     }
 
+    public function test_a_flight_with_pireps_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $flight = Flight::factory()->create();
+        Pirep::factory()->create(['flight_id' => $flight->id]);
+
+        // Deleting the route would null the PIREP's flight_id and strand any
+        // ledger rows that reference the flight.
+        $this->actingAs($admin)
+            ->delete(route('admin.flights.destroy', $flight))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('flights', ['id' => $flight->id]);
+    }
+
+    public function test_the_flight_index_can_be_filtered_by_status(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Flight::factory()->create(['flight_number' => 'SKY111', 'status' => 'Open']);
+        Flight::factory()->create(['flight_number' => 'SKY222', 'status' => 'Completed']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.flights.index', ['status' => 'Open']))
+            ->assertOk()
+            ->assertSee('SKY111')
+            ->assertDontSee('SKY222');
+    }
+
+    public function test_the_pirep_queue_can_be_filtered_by_status(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Pirep::factory()->create(['departure' => 'KJFK', 'arrival' => 'KBOS', 'status' => 'Pending review']);
+        Pirep::factory()->create(['departure' => 'KLAX', 'arrival' => 'KSFO', 'status' => 'Approved']);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.pireps.index', ['status' => 'Approved']))
+            ->assertOk()
+            ->assertSee('KLAX');
+
+        $response->assertDontSee('KJFK');
+    }
+
     public function test_admin_can_approve_and_reject_pirep(): void
     {
         $admin = User::factory()->admin()->create();
