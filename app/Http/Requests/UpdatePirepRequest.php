@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Pirep;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePirepRequest extends FormRequest
 {
@@ -18,7 +20,7 @@ class UpdatePirepRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'string', 'in:Pending review,Approved,Rejected,Paid'],
+            'status' => ['required', 'string', Rule::in(Pirep::STATUSES)],
             'remarks' => ['nullable', 'string', 'max:2000'],
         ];
     }

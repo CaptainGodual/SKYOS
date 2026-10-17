@@ -40,7 +40,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <strong class="d-block text-body-secondary small text-uppercase">Route</div>
+                            <strong class="d-block text-body-secondary small text-uppercase">Route</strong>
                             <div class="fw-semibold">
                                 {{ $tour->originAirport?->identifier ?? '—' }}
                                 <span class="mx-1 text-body-secondary">→</span>
@@ -63,7 +63,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="text-body-secondary small text-uppercase">Price</div>
-                                <div>${{ number_format($tour->price_cents / 100) }}</div>
+                                <div>${{ number_format($tour->price_cents / 100, 2) }}</div>
                             </div>
                         </div>
 

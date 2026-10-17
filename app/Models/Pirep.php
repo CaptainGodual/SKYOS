@@ -19,6 +19,13 @@ class Pirep extends Model
      */
     public const ACCEPTED_STATUSES = ['Approved', 'Paid'];
 
+    /**
+     * Every status a report can hold.
+     *
+     * @var array<int, string>
+     */
+    public const STATUSES = ['Pending review', 'Approved', 'Rejected', 'Paid'];
+
     protected $fillable = ['flight_id', 'pilot_id', 'pilot_name', 'flight_number', 'departure', 'arrival', 'block_minutes', 'landing_rate', 'payout_cents', 'remarks', 'status'];
 
     /**

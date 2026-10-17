@@ -22,7 +22,7 @@ class TourCenterController extends Controller
 
         $bookedTourIds = TourBooking::query()
             ->where('pilot_id', $user->id)
-            ->whereIn('status', ['booked', 'in_progress'])
+            ->active()
             ->pluck('tour_id');
 
         return view('crew-center.tours.index', [
@@ -45,7 +45,7 @@ class TourCenterController extends Controller
         $alreadyBooked = TourBooking::query()
             ->where('pilot_id', $user->id)
             ->where('tour_id', $tour->id)
-            ->whereIn('status', ['booked', 'in_progress'])
+            ->active()
             ->exists();
 
         return view('crew-center.tours.show', [
@@ -66,22 +66,28 @@ class TourCenterController extends Controller
             return back()->with('error', 'This tour is not available for booking.');
         }
 
-        $alreadyBooked = TourBooking::query()
-            ->where('pilot_id', auth()->id())
-            ->where('tour_id', $tour->id)
-            ->whereIn('status', ['booked', 'in_progress'])
-            ->exists();
+        $pilotId = auth()->id();
 
-        if ($alreadyBooked) {
+        $booking = TourBooking::query()
+            ->where('pilot_id', $pilotId)
+            ->where('tour_id', $tour->id)
+            ->first();
+
+        if ($booking && in_array($booking->status, TourBooking::ACTIVE_STATUSES, true)) {
             return back()->with('error', 'You have already booked this tour.');
         }
 
-        TourBooking::query()->create([
-            'tour_id' => $tour->id,
-            'pilot_id' => auth()->id(),
-            'status' => TourBooking::STATUS_BOOKED,
-            'booked_at' => now(),
-        ]);
+        // A pilot may re-book a tour they previously completed or cancelled.
+        // The table allows one row per pilot and tour, so the old row is
+        // reused instead of inserting a duplicate.
+        TourBooking::query()->updateOrCreate(
+            ['tour_id' => $tour->id, 'pilot_id' => $pilotId],
+            [
+                'status' => TourBooking::STATUS_BOOKED,
+                'booked_at' => now(),
+                'completed_at' => null,
+            ],
+        );
 
         return back()->with('success', "You've booked the {$tour->name} tour.");
     }

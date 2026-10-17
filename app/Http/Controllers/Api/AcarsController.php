@@ -18,19 +18,27 @@ use Illuminate\Support\Facades\Hash;
 class AcarsController extends Controller
 {
     /**
+     * A throwaway bcrypt hash used when the submitted email does not exist.
+     *
+     * Verifying against it costs the same as verifying a real password, so the
+     * response time does not reveal whether an account exists. It is the hash
+     * of a random string that no pilot can guess.
+     */
+    private const TIMING_GUARD_HASH = '$2y$12$BtVYyW5jM1PU.olvvcszQOR0f9qA5sa2CnalkYwIMKe2jAJMdPq.G';
+
+    /**
      * Authenticate a pilot and issue an ACARS API token.
      */
     public function login(AcarsLoginRequest $request): JsonResponse
     {
         $credentials = $request->only('email', 'password');
 
-        // Use constant-time comparison to prevent timing attacks
-        // First fetch by email, then verify password in constant time
         $user = User::query()->where('email', $credentials['email'])->first();
 
+        // Unknown emails are still put through a full hash comparison so that
+        // both branches take the same time.
         if (! $user) {
-            // Still perform a hash comparison to maintain constant time
-            Hash::check($credentials['password'], '');
+            Hash::check($credentials['password'], self::TIMING_GUARD_HASH);
 
             return response()->json([
                 'message' => 'Invalid email or password.',

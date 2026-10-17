@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Flight;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateFlightRequest extends FormRequest
 {
@@ -26,7 +28,7 @@ class UpdateFlightRequest extends FormRequest
             'scheduled_at' => ['sometimes', 'required', 'date'],
             'estimated_minutes' => ['sometimes', 'required', 'integer', 'min:1', 'max:1440'],
             'payout_cents' => ['sometimes', 'required', 'numeric', 'min:0'],
-            'status' => ['sometimes', 'required', 'string', 'in:Open,Booked,Canceled,Completed'],
+            'status' => ['sometimes', 'required', 'string', Rule::in(Flight::STATUSES)],
         ];
     }
 }

@@ -18,8 +18,21 @@ class CrewCenterController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $pilotId = $user->id;
 
-        $pireps = Pirep::query()->where('pilot_id', $user->id)->latest()->get();
+        // Aggregated in SQL: a long-serving pilot can hold thousands of reports
+        // and the dashboard only ever renders the totals.
+        $flightHours = Pirep::query()->where('pilot_id', $pilotId)->sum('block_minutes');
+        $incomeCents = Pirep::query()
+            ->where('pilot_id', $pilotId)
+            ->whereIn('status', Pirep::ACCEPTED_STATUSES)
+            ->sum('payout_cents');
+        $pendingPireps = Pirep::query()->where('pilot_id', $pilotId)->where('status', 'Pending review')->count();
+        $pirepCount = Pirep::query()->where('pilot_id', $pilotId)->count();
+        $unreadMessages = CrewMessage::query()
+            ->where('recipient_name', $user->name)
+            ->whereNull('read_at')
+            ->count();
 
         return view('crew-center.index', [
             'user' => $user,
@@ -31,7 +44,7 @@ class CrewCenterController extends Controller
                 ->take(5)
                 ->get(),
             'activeFlights' => Flight::query()
-                ->where('pilot_id', $user->id)
+                ->where('pilot_id', $pilotId)
                 ->where('acars_status', 'En Route')
                 ->orderByDesc('departed_at')
                 ->take(4)
@@ -41,19 +54,13 @@ class CrewCenterController extends Controller
                 ->latest()
                 ->take(3)
                 ->get(),
-            'pireps' => $pireps->take(3),
             'webhookEvents' => WebhookEvent::query()->latest()->take(4)->get(),
             'stats' => [
-                'hours' => round($pireps->sum('block_minutes') / 60, 1),
-                'income_cents' => $pireps
-                    ->whereIn('status', Pirep::ACCEPTED_STATUSES)
-                    ->sum('payout_cents'),
-                'pending' => $pireps->where('status', 'Pending review')->count(),
-                'pirep_count' => $pireps->count(),
-                'unread' => CrewMessage::query()
-                    ->where('recipient_name', $user->name)
-                    ->whereNull('read_at')
-                    ->count(),
+                'hours' => round($flightHours / 60, 1),
+                'income_cents' => $incomeCents,
+                'pending' => $pendingPireps,
+                'pirep_count' => $pirepCount,
+                'unread' => $unreadMessages,
             ],
         ]);
     }
@@ -125,10 +132,15 @@ class CrewCenterController extends Controller
 
     public function storeMessage(Request $request): RedirectResponse
     {
+        // Crew messages are addressed by pilot name (see the crew_messages
+        // table), so the recipient must be a real crew member rather than any
+        // name the sender happens to type.
         $data = $request->validate([
-            'recipient_name' => ['required', 'string', 'max:100'],
+            'recipient_name' => ['required', 'string', 'max:100', 'exists:users,name'],
             'subject' => ['required', 'string', 'max:120'],
             'body' => ['required', 'string', 'max:2000'],
+        ], [
+            'recipient_name.exists' => 'No crew member with that name was found.',
         ]);
 
         CrewMessage::create([...$data, 'sender_name' => $request->user()->name]);

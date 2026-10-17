@@ -60,7 +60,7 @@
                                     </tr>
                                     <tr>
                                         <th>Payout</th>
-                                        <td>${{ number_format($pirep->payout_cents / 100) }}</td>
+                                        <td>${{ number_format($pirep->payout_cents / 100, 2) }}</td>
                                     </tr>
                                     <tr>
                                         <th>Filed at</th>

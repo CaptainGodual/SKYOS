@@ -29,8 +29,14 @@ class EnsureApiToken
         }
 
         // Check if token has expired
-        if ($apiToken->expires_at && $apiToken->expires_at->isPast()) {
+        if ($apiToken->isExpired()) {
             return response()->json(['message' => 'Token has expired. Please re-authenticate.'], 401);
+        }
+
+        // Approval is re-checked on every request so that revoking a pilot's
+        // access also revokes any ACARS token that is still within its lifetime.
+        if (! $apiToken->user?->isApproved()) {
+            return response()->json(['message' => 'Your account is not approved for ACARS access.'], 403);
         }
 
         // Update last used timestamp

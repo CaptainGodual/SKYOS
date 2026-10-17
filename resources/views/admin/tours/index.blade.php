@@ -48,7 +48,7 @@
                             </td>
                             <td class="text-center">{{ $tour->legs_count ?? 0 }}</td>
                             <td class="text-center">{{ $tour->bookings_count ?? 0 }}</td>
-                            <td class="text-center">${{ number_format($tour->price_cents / 100) }}</td>
+                            <td class="text-center">${{ number_format($tour->price_cents / 100, 2) }}</td>
                             <td class="text-center">
                                 <span class="badge {{ $tour->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $tour->is_active ? 'Active' : 'Inactive' }}</span>
                             </td>

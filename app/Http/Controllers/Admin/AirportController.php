@@ -100,6 +100,7 @@ class AirportController extends Controller
 
         $inserted = 0;
         $processed = 0;
+        $skipped = 0;
         $chunk = [];
 
         while (($row = fgetcsv($handle)) !== false) {
@@ -107,9 +108,20 @@ class AirportController extends Controller
                 continue;
             }
 
+            // array_combine() throws a ValueError (PHP 8) when a row has a
+            // different number of columns than the header list, so a single
+            // malformed line must be filtered out here.
+            if (count($row) !== count($columns)) {
+                $skipped++;
+
+                continue;
+            }
+
             $record = array_combine($columns, $row);
 
             if ($record === false || blank($record['identifier'])) {
+                $skipped++;
+
                 continue;
             }
 
@@ -147,9 +159,15 @@ class AirportController extends Controller
 
         $total = Airport::query()->count();
 
+        $message = "Processed {$processed} airports. Total airports in database: {$total}.";
+
+        if ($skipped > 0) {
+            $message .= " Skipped {$skipped} row(s) that did not match the expected ".count($columns).' columns.';
+        }
+
         return redirect()
             ->route('admin.airports.index')
-            ->with('success', "Processed {$processed} airports. Total airports in database: {$total}.");
+            ->with('success', $message);
     }
 
     /**

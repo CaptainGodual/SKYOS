@@ -13,6 +13,13 @@ class Flight extends Model
     /** @use HasFactory<FlightFactory> */
     use HasFactory;
 
+    /**
+     * Every status a scheduled route can hold.
+     *
+     * @var array<int, string>
+     */
+    public const STATUSES = ['Open', 'Booked', 'Canceled', 'Completed'];
+
     protected $fillable = ['flight_number', 'departure', 'arrival', 'route', 'aircraft', 'scheduled_at', 'estimated_minutes', 'payout_cents', 'status', 'pilot_id', 'pilot_name', 'acars_status', 'altitude', 'ground_speed', 'departed_at', 'arrived_at'];
 
     protected function casts(): array

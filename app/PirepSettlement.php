@@ -34,12 +34,15 @@ class PirepSettlement
             return;
         }
 
-        if ($flight->payout_cents > 0) {
+        // The payout is the amount the report promised the pilot, not whatever
+        // the flight route says today: editing a route afterwards must not
+        // change what an already-filed PIREP pays out.
+        if ($pirep->payout_cents > 0) {
             $this->record(
                 $flight,
                 'Pilot Payout',
-                "PIREP #{$flight->flight_number} - {$flight->departure} → {$flight->arrival}",
-                -abs($flight->payout_cents),
+                "Payout for PIREP #{$pirep->id} ({$pirep->flight_number}) - {$pirep->departure} → {$pirep->arrival}",
+                -abs($pirep->payout_cents),
             );
         }
 

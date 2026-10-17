@@ -23,7 +23,7 @@
                     <p class="mb-0 text-white-50">{{ $tour->description ?? 'No description available.' }}</p>
                 </div>
                 <div class="col-lg-4 mt-4 mt-lg-0 text-lg-end">
-                    <span class="badge bg-white text-primary fs-6 px-3 py-2">${{ number_format($tour->price_cents / 100) }}</span>
+                    <span class="badge bg-white text-primary fs-6 px-3 py-2">${{ number_format($tour->price_cents / 100, 2) }}</span>
                     <p class="small mb-0 mt-3 text-white-50">{{ $tour->legs_count ?? 0 }} leg{{ $tour->legs_count ?? 0 !== 1 ? 's' : '' }} · {{ $tour->total_distance_nm ?? '—' }} NM</p>
                 </div>
             </div>
@@ -73,7 +73,7 @@
 
                     <div class="mb-3">
                         <strong class="d-block text-body-secondary small text-uppercase">Total price</div>
-                        <div class="fw-semibold">${{ number_format($tour->price_cents / 100) }}</div>
+                        <div class="fw-semibold">${{ number_format($tour->price_cents / 100, 2) }}</div>
                     </div>
 
                     @if ($alreadyBooked)

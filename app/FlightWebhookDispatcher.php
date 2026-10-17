@@ -37,12 +37,23 @@ class FlightWebhookDispatcher
 
         $discordPayload = $this->discordPayload($flight, $eventType);
 
-        $response = Http::connectTimeout(3)->timeout(5)->post($webhookUrl, $discordPayload);
+        try {
+            $response = Http::connectTimeout(3)->timeout(5)->post($webhookUrl, $discordPayload);
 
-        $event->update([
-            'status' => $response->successful() ? 'Delivered' : 'Failed',
-            'delivered_at' => $response->successful() ? now() : null,
-        ]);
+            $event->update([
+                'status' => $response->successful() ? 'Delivered' : 'Failed',
+                'delivered_at' => $response->successful() ? now() : null,
+            ]);
+        } catch (\Throwable $e) {
+            // A broken webhook endpoint must never take a pilot's flight event
+            // down with it — the event stays queued and can be replayed.
+            report($e);
+
+            $event->update([
+                'status' => 'Failed',
+                'delivered_at' => null,
+            ]);
+        }
 
         return $event;
     }

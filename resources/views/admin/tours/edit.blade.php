@@ -25,14 +25,14 @@
                     <span class="nav-icon">←</span> Back to tours
                 </a>
                 @if ($tour->is_active)
-                    <form method="POST" action="{{ route('tours.update', $tour) }}" class="d-inline">
+                    <form method="POST" action="{{ route('admin.tours.update', $tour) }}" class="d-inline">
                         @csrf
                         <input type="hidden" name="_method" value="PUT">
                         <input type="hidden" name="is_active" value="0">
                         <button class="btn btn-sm btn-outline-warning" type="submit" onclick="return confirm('Deactivate this tour? Pilots will no longer see it.')">Deactivate</button>
                     </form>
                 @else
-                    <form method="POST" action="{{ route('tours.update', $tour) }}" class="d-inline">
+                    <form method="POST" action="{{ route('admin.tours.update', $tour) }}" class="d-inline">
                         @csrf
                         <input type="hidden" name="_method" value="PUT">
                         <input type="hidden" name="is_active" value="1">
@@ -42,7 +42,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('tours.update', $tour) }}">
+                <form method="POST" action="{{ route('admin.tours.update', $tour) }}">
                 @csrf
                 <input type="hidden" name="_method" value="PUT">
 
@@ -114,7 +114,8 @@
                 </div>
 
                 <div class="mb-3 form-check">
-                    <input class="form-check-input" id="is_active" name="is_active" type="checkbox" {{ old('is_active', $tour->is_active) ? 'checked' : '' }}>
+                    <input type="hidden" name="is_active" value="0">
+                    <input class="form-check-input" id="is_active" name="is_active" type="checkbox" value="1" {{ old('is_active', $tour->is_active) ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Active tour (visible to pilots)</label>
                 </div>
 
@@ -157,7 +158,7 @@
                             <td class="text-center">{{ $leg->distance_nm ?? '—' }}</td>
                             <td class="text-center">{{ $leg->estimated_minutes ?? '—' }} min</td>
                             <td class="text-end">
-                                <form method="POST" action="{{ route('tours.legs.destroy', [$tour, $leg]) }}" onsubmit="return confirm('Remove this leg?')">
+                                <form method="POST" action="{{ route('admin.tours.legs.destroy', [$tour, $leg]) }}" onsubmit="return confirm('Remove this leg?')">
                                     @csrf
                                     <input type="hidden" name="_method" value="DELETE">
                                     <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
@@ -181,7 +182,7 @@
                     <h5 class="modal-title">Add Tour Leg</h5>
                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST" action="{{ route('tours.legs.store', $tour) }}">
+                <form method="POST" action="{{ route('admin.tours.legs.store', $tour) }}">
                     @csrf
                     <div class="modal-body">
                         <input type="hidden" name="leg_number" value="{{ ($tour->legs->max('leg_number') ?? 0) + 1 }}">

@@ -43,8 +43,8 @@
                     <div class="col-md-6">
                         <label class="form-label" for="origin_airport_id">Origin airport <span class="text-body-secondary">(required)</span></label>
                         <div class="airport-search">
-                            <input class="form-control @error('origin_airport_id') is-invalid @enderror" id="origin_airport_search" type="text" value="{{ old('origin_airport_id', $tour->originAirport?->identifier ?? '') }}" placeholder="Search airports..." autocomplete="off">
-                            <input type="hidden" id="origin_airport_id" name="origin_airport_id" value="{{ old('origin_airport_id', $tour->originAirport?->id ?? '') }}" required>
+                            <input class="form-control @error('origin_airport_id') is-invalid @enderror" id="origin_airport_search" type="text" placeholder="Search airports..." autocomplete="off">
+                            <input type="hidden" id="origin_airport_id" name="origin_airport_id" value="{{ old('origin_airport_id') }}" required>
                             <div id="origin_airport_results" class="airport-results" style="display: none;"></div>
                         </div>
                         @error('origin_airport_id')
@@ -54,8 +54,8 @@
                     <div class="col-md-6">
                         <label class="form-label" for="destination_airport_id">Destination airport <span class="text-body-secondary">(required)</span></label>
                         <div class="airport-search">
-                            <input class="form-control @error('destination_airport_id') is-invalid @enderror" id="destination_airport_search" type="text" value="{{ old('destination_airport_id', $tour->destinationAirport?->identifier ?? '') }}" placeholder="Search airports..." autocomplete="off">
-                            <input type="hidden" id="destination_airport_id" name="destination_airport_id" value="{{ old('destination_airport_id', $tour->destinationAirport?->id ?? '') }}" required>
+                            <input class="form-control @error('destination_airport_id') is-invalid @enderror" id="destination_airport_search" type="text" placeholder="Search airports..." autocomplete="off">
+                            <input type="hidden" id="destination_airport_id" name="destination_airport_id" value="{{ old('destination_airport_id') }}" required>
                             <div id="destination_airport_results" class="airport-results" style="display: none;"></div>
                         </div>
                         @error('destination_airport_id')
@@ -90,7 +90,8 @@
                 </div>
 
                 <div class="mb-3 form-check">
-                    <input class="form-check-input" id="is_active" name="is_active" type="checkbox" {{ old('is_active', true) ? 'checked' : '' }}>
+                    <input type="hidden" name="is_active" value="0">
+                    <input class="form-check-input" id="is_active" name="is_active" type="checkbox" value="1" {{ old('is_active', true) ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Active tour (visible to pilots)</label>
                 </div>
 

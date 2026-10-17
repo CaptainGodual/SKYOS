@@ -13,11 +13,11 @@ class AdminDashboardController extends Controller
     public function index(): View
     {
         $stats = [
-            'pilots' => User::query()->count(),
+            'pilots' => User::query()->where('is_admin', false)->count(),
             'flights' => Flight::query()->count(),
             'open_flights' => Flight::query()->where('status', 'Open')->count(),
             'pending_pireps' => Pirep::query()->where('status', 'Pending review')->count(),
-            'approved_pireps' => Pirep::query()->where('status', 'Approved')->count(),
+            'approved_pireps' => Pirep::query()->whereIn('status', Pirep::ACCEPTED_STATUSES)->count(),
         ];
 
         $recentPireps = Pirep::query()->latest()->take(5)->get();

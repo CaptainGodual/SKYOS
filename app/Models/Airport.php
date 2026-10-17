@@ -3,18 +3,26 @@
 namespace App\Models;
 
 use Database\Factories\AirportFactory;
-use Illuminate\Database\Eloquent\Attributes\Cast;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['identifier', 'iata_code', 'icao_code', 'name', 'type', 'latitude', 'longitude', 'elevation', 'country_code', 'region_code', 'municipality', 'time_zone', 'is_hub'])]
-#[Cast(['is_hub' => 'boolean'])]
 class Airport extends Model
 {
     /** @use HasFactory<AirportFactory> */
     use HasFactory;
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return ['is_hub' => 'boolean'];
+    }
 
     /**
      * Get the pilots whose home hub is this airport.

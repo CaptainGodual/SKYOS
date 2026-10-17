@@ -29,6 +29,13 @@ class TourBooking extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    /**
+     * The statuses that mean the pilot currently holds this tour.
+     *
+     * @var array<int, string>
+     */
+    public const ACTIVE_STATUSES = [self::STATUS_BOOKED, self::STATUS_IN_PROGRESS];
+
     public function tour()
     {
         return $this->belongsTo(Tour::class, 'tour_id');
@@ -42,6 +49,14 @@ class TourBooking extends Model
     public function scopeBooked($query)
     {
         return $query->where('status', self::STATUS_BOOKED);
+    }
+
+    /**
+     * Scope a query to the bookings that still hold a tour for the pilot.
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', self::ACTIVE_STATUSES);
     }
 
     public function scopeCompleted($query)
