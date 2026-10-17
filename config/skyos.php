@@ -14,4 +14,18 @@ return [
 
     'max_booked_flights' => env('SKYOS_MAX_BOOKED_FLIGHTS', 3),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Flight Revenue
+    |--------------------------------------------------------------------------
+    |
+    | Ticket revenue booked when a PIREP is accepted, expressed as a multiple of
+    | the payout the pilot is owed. A $100 payout with a multiplier of 1.5 books
+    | $150 of revenue, so the flight contributes $50. Set to 0 to record no
+    | revenue at all.
+    |
+    */
+
+    'revenue_multiplier' => env('SKYOS_REVENUE_MULTIPLIER', 1.5),
+
 ];

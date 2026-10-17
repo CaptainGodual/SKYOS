@@ -8,11 +8,11 @@ use App\Models\FlightExpense;
 use App\Models\Pirep;
 
 /**
- * Records and reverses the money a PIREP costs the airline.
+ * Records and reverses the money a PIREP moves.
  *
- * Nothing is written while a PIREP is awaiting review: the payout and the
- * airport expenses only reach the books once an administrator accepts the
- * report, so a pilot cannot move money on their own.
+ * Nothing is written while a PIREP is awaiting review: the payout, the ticket
+ * revenue and the airport expenses only reach the books once an administrator
+ * accepts the report, so a pilot cannot move money on their own.
  */
 class PirepSettlement
 {
@@ -40,10 +40,25 @@ class PirepSettlement
         if ($pirep->payout_cents > 0) {
             $this->record(
                 $flight,
+                FinancialTransaction::TYPE_EXPENSE,
                 'Pilot Payout',
                 "Payout for PIREP #{$pirep->id} ({$pirep->flight_number}) - {$pirep->departure} → {$pirep->arrival}",
                 -abs($pirep->payout_cents),
             );
+
+            // Ticket sales the flight brought in, derived from the payout so
+            // every route contributes without a second number to maintain.
+            $revenue = $this->revenueFor($pirep->payout_cents);
+
+            if ($revenue > 0) {
+                $this->record(
+                    $flight,
+                    FinancialTransaction::TYPE_REVENUE,
+                    'Flight Revenue',
+                    "Ticket revenue for PIREP #{$pirep->id} ({$pirep->flight_number}) - {$pirep->departure} → {$pirep->arrival}",
+                    $revenue,
+                );
+            }
         }
 
         // Airport expenses for the departure and arrival airports.
@@ -55,6 +70,7 @@ class PirepSettlement
         foreach ($expenses as $expense) {
             $this->record(
                 $flight,
+                FinancialTransaction::TYPE_EXPENSE,
                 $expense->category,
                 "{$expense->name} - {$flight->flight_number} ({$flight->departure} → {$flight->arrival})",
                 -abs($expense->cost_cents),
@@ -96,12 +112,12 @@ class PirepSettlement
     }
 
     /**
-     * Write a single expense to the ledger.
+     * Write a single transaction to the ledger.
      */
-    private function record(Flight $flight, string $category, string $description, int $amountCents): void
+    private function record(Flight $flight, string $type, string $category, string $description, int $amountCents): void
     {
         FinancialTransaction::create([
-            'type' => 'expense',
+            'type' => $type,
             'category' => $category,
             'description' => $description,
             'amount_cents' => $amountCents,
@@ -110,5 +126,19 @@ class PirepSettlement
             'reference_type' => 'pirep',
             'reference_id' => $flight->id,
         ]);
+    }
+
+    /**
+     * Ticket revenue a flight generates, as a multiple of the pilot's payout.
+     */
+    private function revenueFor(int $payoutCents): int
+    {
+        $multiplier = (float) config('skyos.revenue_multiplier', 1.5);
+
+        if ($multiplier <= 0) {
+            return 0;
+        }
+
+        return (int) round($payoutCents * $multiplier);
     }
 }

@@ -153,7 +153,8 @@ class CrewCenterTest extends TestCase
         $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Approved']);
         $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Approved']);
 
-        $this->assertDatabaseCount(FinancialTransaction::class, 1);
+        $this->assertSame(1, FinancialTransaction::query()->where('category', 'Pilot Payout')->count());
+        $this->assertSame(1, FinancialTransaction::query()->where('type', 'revenue')->count());
     }
 
     public function test_rejecting_an_approved_pirep_takes_the_payout_back_off_the_books(): void
@@ -176,14 +177,14 @@ class CrewCenterTest extends TestCase
         $pirep = Pirep::query()->sole();
 
         $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Approved']);
-        $this->assertDatabaseCount(FinancialTransaction::class, 1);
+        $this->assertSame(1, FinancialTransaction::query()->where('category', 'Pilot Payout')->count());
 
         $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Rejected']);
-        $this->assertDatabaseCount(FinancialTransaction::class, 0);
+        $this->assertSame(0, FinancialTransaction::query()->where('category', 'Pilot Payout')->count());
 
         // Re-approving puts it back.
         $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Approved']);
-        $this->assertDatabaseCount(FinancialTransaction::class, 1);
+        $this->assertSame(1, FinancialTransaction::query()->where('category', 'Pilot Payout')->count());
     }
 
     public function test_deleting_a_pirep_reverses_its_settlement(): void
@@ -206,7 +207,7 @@ class CrewCenterTest extends TestCase
         $pirep = Pirep::query()->sole();
 
         $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Approved']);
-        $this->assertDatabaseCount(FinancialTransaction::class, 1);
+        $this->assertSame(1, FinancialTransaction::query()->where('category', 'Pilot Payout')->count());
 
         $this->actingAs($admin)->delete(route('admin.pireps.destroy', $pirep))->assertRedirect();
 
@@ -571,5 +572,132 @@ class CrewCenterTest extends TestCase
         $response->assertSee('3.0');
         $response->assertSee('250.00');
         $response->assertSee('Across 2 logged PIREPs');
+    }
+
+    public function test_approving_a_pirep_books_ticket_revenue(): void
+    {
+        config()->set('skyos.revenue_multiplier', 2.0);
+
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $flight = Flight::factory()->create([
+            'flight_number' => 'SKY410',
+            'pilot_id' => $user->id,
+            'payout_cents' => 10000,
+        ]);
+
+        $this->actingAs($user)->post(route('pireps.store'), [
+            'flight_number' => 'SKY410',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 60,
+        ])->assertRedirect();
+
+        // Still nothing on the books while the report waits for review.
+        $this->assertDatabaseCount('financial_transactions', 0);
+
+        $this->actingAs($admin)->put(
+            route('admin.pireps.update', Pirep::query()->sole()),
+            ['status' => 'Approved'],
+        );
+
+        $this->assertDatabaseHas(FinancialTransaction::class, [
+            'type' => 'revenue',
+            'category' => 'Flight Revenue',
+            'amount_cents' => 20000,
+        ]);
+        $this->assertDatabaseHas(FinancialTransaction::class, [
+            'type' => 'expense',
+            'category' => 'Pilot Payout',
+            'amount_cents' => -10000,
+        ]);
+        $this->assertSame(100.0, FinancialTransaction::netBalance());
+    }
+
+    public function test_revenue_can_be_switched_off(): void
+    {
+        config()->set('skyos.revenue_multiplier', 0);
+
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        Flight::factory()->create([
+            'flight_number' => 'SKY411',
+            'pilot_id' => $user->id,
+            'payout_cents' => 10000,
+        ]);
+
+        $this->actingAs($user)->post(route('pireps.store'), [
+            'flight_number' => 'SKY411',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 60,
+        ]);
+
+        $this->actingAs($admin)->put(
+            route('admin.pireps.update', Pirep::query()->sole()),
+            ['status' => 'Approved'],
+        );
+
+        $this->assertDatabaseHas(FinancialTransaction::class, ['category' => 'Pilot Payout']);
+        $this->assertDatabaseMissing('financial_transactions', ['type' => 'revenue']);
+    }
+
+    public function test_rejecting_a_pirep_removes_its_revenue_too(): void
+    {
+        config()->set('skyos.revenue_multiplier', 2.0);
+
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        Flight::factory()->create([
+            'flight_number' => 'SKY412',
+            'pilot_id' => $user->id,
+            'payout_cents' => 10000,
+        ]);
+
+        $this->actingAs($user)->post(route('pireps.store'), [
+            'flight_number' => 'SKY412',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 60,
+        ]);
+
+        $pirep = Pirep::query()->sole();
+
+        $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Approved']);
+        $this->assertDatabaseCount('financial_transactions', 2);
+
+        $this->actingAs($admin)->put(route('admin.pireps.update', $pirep), ['status' => 'Rejected']);
+        $this->assertDatabaseCount('financial_transactions', 0);
+    }
+
+    public function test_the_finance_page_reports_the_booked_revenue(): void
+    {
+        config()->set('skyos.revenue_multiplier', 2.0);
+
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        Flight::factory()->create([
+            'flight_number' => 'SKY413',
+            'pilot_id' => $user->id,
+            'payout_cents' => 10000,
+        ]);
+
+        $this->actingAs($user)->post(route('pireps.store'), [
+            'flight_number' => 'SKY413',
+            'departure' => 'KJFK',
+            'arrival' => 'KBOS',
+            'block_minutes' => 60,
+        ]);
+
+        $this->actingAs($admin)->put(
+            route('admin.pireps.update', Pirep::query()->sole()),
+            ['status' => 'Approved'],
+        );
+
+        $this->actingAs($admin)->get(route('admin.finance.index'))
+            ->assertOk()
+            ->assertSee('$200.00')
+            ->assertSee('$100.00')
+            ->assertSee('Flight Revenue');
     }
 }
