@@ -24,8 +24,18 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('hub_id');
+        // The foreign key itself belongs to a later migration, so a rollback may
+        // reach here with one in place or without one, depending on how far it
+        // has gone. Drop it only when it is actually there.
+        $hasForeignKey = collect(Schema::getForeignKeys('users'))
+            ->contains(fn (array $foreignKey): bool => $foreignKey['columns'] === ['hub_id']);
+
+        Schema::table('users', function (Blueprint $table) use ($hasForeignKey) {
+            if ($hasForeignKey) {
+                $table->dropForeign(['hub_id']);
+            }
+
+            $table->dropColumn('hub_id');
         });
     }
 };

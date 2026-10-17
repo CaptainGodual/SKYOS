@@ -15,8 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->foreignId('origin_airport_id')->constrained('airports')->nullOnDelete();
-            $table->foreignId('destination_airport_id')->constrained('airports')->nullOnDelete();
+            // A tour always has an origin and a destination (both are required
+            // by the admin form), so the airports are NOT NULL and the foreign
+            // keys restrict. NULLing them out is not an option MySQL accepts,
+            // and would leave a tour the pages cannot render.
+            $table->foreignId('origin_airport_id')->constrained('airports')->restrictOnDelete();
+            $table->foreignId('destination_airport_id')->constrained('airports')->restrictOnDelete();
             $table->integer('total_distance_nm')->nullable()->comment('Total tour distance in nautical miles');
             $table->integer('estimated_duration_minutes')->nullable()->comment('Total estimated flight time');
             $table->integer('price_cents')->default(0)->comment('Tour price in cents');

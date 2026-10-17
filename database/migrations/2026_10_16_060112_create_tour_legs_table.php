@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tour_id')->constrained('tours')->cascadeOnDelete();
             $table->integer('leg_number')->comment('Sequential leg number within the tour');
-            $table->foreignId('departure_airport_id')->constrained('airports')->nullOnDelete();
-            $table->foreignId('arrival_airport_id')->constrained('airports')->nullOnDelete();
+            // Each leg always departs and arrives somewhere: see create_tours_table.
+            $table->foreignId('departure_airport_id')->constrained('airports')->restrictOnDelete();
+            $table->foreignId('arrival_airport_id')->constrained('airports')->restrictOnDelete();
             $table->integer('distance_nm')->nullable()->comment('Leg distance in nautical miles');
             $table->integer('estimated_minutes')->nullable()->comment('Estimated flight time for this leg');
             $table->timestamps();
