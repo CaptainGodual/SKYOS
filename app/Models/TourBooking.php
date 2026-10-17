@@ -13,6 +13,14 @@ class TourBooking extends Model
     /** @use HasFactory<TourBookingFactory> */
     use HasFactory;
 
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'booked_at' => 'datetime',
+        'completed_at' => 'datetime',
+    ];
+
     public const STATUS_BOOKED = 'booked';
 
     public const STATUS_IN_PROGRESS = 'in_progress';

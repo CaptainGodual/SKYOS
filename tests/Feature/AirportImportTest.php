@@ -120,6 +120,29 @@ class AirportImportTest extends TestCase
             ->assertSessionHasErrors('file');
     }
 
+    public function test_import_trims_values_to_the_column_limits(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        // MySQL enforces these VARCHAR limits in strict mode; SQLite does not.
+        $csv = "identifier,iata_code,icao_code,name,type,latitude,longitude,elevation,country_code,region_code,municipality,time_zone\n"
+            ."KJFK,JFK,KJFK,John F. Kennedy International Airport,large_airport,40.6413,-73.7781,13,USA,US-NY-EXTENDED,New York,America/New_York\n";
+
+        $path = tempnam(sys_get_temp_dir(), 'airport_');
+        file_put_contents($path, $csv);
+
+        $uploaded = new UploadedFile($path, 'airports.csv', 'text/csv', null, true);
+
+        $this->actingAs($admin)->post(route('admin.airports.import.store'), [
+            'file' => $uploaded,
+        ])->assertRedirect(route('admin.airports.index'));
+
+        $airport = Airport::query()->where('identifier', 'KJFK')->firstOrFail();
+
+        $this->assertSame('US', $airport->country_code);
+        $this->assertSame('US-NY-EXTE', $airport->region_code);
+    }
+
     public function test_admin_can_toggle_airport_hub_status(): void
     {
         $admin = User::factory()->admin()->create();

@@ -53,18 +53,19 @@ class AcarsController extends Controller
 
         // Create a new API token without invalidating existing ones.
         // Each login generates a unique token with its own 24-hour expiry.
+        // Only the hash is persisted, so a database leak cannot be replayed.
         $token = bin2hex(random_bytes(24));
         $expiresAt = now()->addHours(24);
 
-        $apiToken = ApiToken::create([
+        ApiToken::create([
             'user_id' => $user->id,
-            'token' => $token,
+            'token' => ApiToken::hashToken($token),
             'name' => 'ACARS Client',
             'expires_at' => $expiresAt,
         ]);
 
         return response()->json([
-            'token' => $apiToken->token,
+            'token' => $token,
             'expires_at' => $expiresAt,
             'pilot' => [
                 'id' => $user->id,

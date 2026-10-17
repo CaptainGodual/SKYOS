@@ -134,4 +134,43 @@ class TourCenterTest extends TestCase
         $response->assertOk();
         $response->assertSee($tour->name);
     }
+
+    public function test_pilot_can_view_their_booked_tours(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $tour = Tour::factory()->create(['is_active' => true, 'name' => 'Pacific Island Hopper']);
+        TourBooking::factory()->create(['tour_id' => $tour->id, 'pilot_id' => $user->id, 'status' => 'booked']);
+
+        $response = $this->actingAs($user)->get(route('tours.my'));
+
+        $response->assertOk();
+        $response->assertSee('Pacific Island Hopper');
+    }
+
+    public function test_admin_can_remove_a_leg_from_a_tour(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $tour = Tour::factory()->create();
+        $leg = TourLeg::factory()->create(['tour_id' => $tour->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.tours.legs.destroy', [$tour, $leg]))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('tour_legs', ['id' => $leg->id]);
+    }
+
+    public function test_a_leg_cannot_be_removed_through_another_tour(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $tour = Tour::factory()->create();
+        $otherTour = Tour::factory()->create();
+        $leg = TourLeg::factory()->create(['tour_id' => $otherTour->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.tours.legs.destroy', [$tour, $leg]))
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('tour_legs', ['id' => $leg->id]);
+    }
 }

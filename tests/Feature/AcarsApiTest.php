@@ -28,7 +28,13 @@ class AcarsApiTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['token', 'pilot']);
-        $this->assertNotNull(ApiToken::where('user_id', $user->id)->first()->token);
+
+        $plainToken = $response->json('token');
+        $storedToken = ApiToken::query()->where('user_id', $user->id)->value('token');
+
+        $this->assertNotNull($storedToken);
+        $this->assertNotSame($plainToken, $storedToken, 'The plaintext token must never be stored.');
+        $this->assertSame(ApiToken::hashToken($plainToken), $storedToken);
     }
 
     public function test_acars_login_rejects_invalid_credentials(): void
@@ -72,7 +78,7 @@ class AcarsApiTest extends TestCase
         $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         ApiToken::create([
             'user_id' => $user->id,
-            'token' => 'test-token-123',
+            'token' => ApiToken::hashToken('test-token-123'),
             'name' => 'Test Token',
             'expires_at' => now()->addHours(24),
         ]);
@@ -116,7 +122,7 @@ class AcarsApiTest extends TestCase
         $owner = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         ApiToken::create([
             'user_id' => $owner->id,
-            'token' => 'owner-token',
+            'token' => ApiToken::hashToken('owner-token'),
             'name' => 'Owner Token',
             'expires_at' => now()->addHours(24),
         ]);
@@ -124,7 +130,7 @@ class AcarsApiTest extends TestCase
         $attacker = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         ApiToken::create([
             'user_id' => $attacker->id,
-            'token' => 'attacker-token',
+            'token' => ApiToken::hashToken('attacker-token'),
             'name' => 'Attacker Token',
             'expires_at' => now()->addHours(24),
         ]);
@@ -141,7 +147,7 @@ class AcarsApiTest extends TestCase
         $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
         ApiToken::create([
             'user_id' => $user->id,
-            'token' => 'pirep-token',
+            'token' => ApiToken::hashToken('pirep-token'),
             'name' => 'PIREP Token',
             'expires_at' => now()->addHours(24),
         ]);

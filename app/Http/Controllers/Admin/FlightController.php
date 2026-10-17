@@ -52,9 +52,11 @@ class FlightController extends Controller
                 ->route('admin.flights.index')
                 ->with('success', 'Flight route updated.');
         } catch (\Throwable $e) {
+            report($e);
+
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update flight route: '.$e->getMessage());
+                ->with('error', 'Failed to update the flight route. Please check the values and try again.');
         }
     }
 

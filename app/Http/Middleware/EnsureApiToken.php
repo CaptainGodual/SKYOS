@@ -22,7 +22,7 @@ class EnsureApiToken
             return response()->json(['message' => 'Unauthorized.'], 401);
         }
 
-        $apiToken = ApiToken::where('token', $token)->with('user')->first();
+        $apiToken = ApiToken::where('token', ApiToken::hashToken($token))->with('user')->first();
 
         if (! $apiToken) {
             return response()->json(['message' => 'Invalid or expired token.'], 401);

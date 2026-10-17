@@ -116,12 +116,19 @@ class AirportController extends Controller
             $record['latitude'] = blank($record['latitude']) ? null : (float) $record['latitude'];
             $record['longitude'] = blank($record['longitude']) ? null : (float) $record['longitude'];
             $record['elevation'] = blank($record['elevation']) ? null : (int) $record['elevation'];
-            $record['iata_code'] = blank($record['iata_code']) ? null : $record['iata_code'];
-            $record['icao_code'] = blank($record['icao_code']) ? null : $record['icao_code'];
-            $record['country_code'] = blank($record['country_code']) ? null : $record['country_code'];
-            $record['region_code'] = blank($record['region_code']) ? null : $record['region_code'];
-            $record['municipality'] = blank($record['municipality']) ? null : $record['municipality'];
-            $record['time_zone'] = blank($record['time_zone']) ? null : $record['time_zone'];
+
+            // MySQL enforces column lengths in strict mode, whereas SQLite silently
+            // accepts overlong values. Trim to the schema limits so a single bad row
+            // cannot abort an entire import chunk on production.
+            $record['identifier'] = mb_substr((string) $record['identifier'], 0, 255);
+            $record['name'] = mb_substr((string) $record['name'], 0, 255);
+            $record['type'] = mb_substr((string) $record['type'], 0, 255);
+            $record['iata_code'] = blank($record['iata_code']) ? null : mb_substr((string) $record['iata_code'], 0, 255);
+            $record['icao_code'] = blank($record['icao_code']) ? null : mb_substr((string) $record['icao_code'], 0, 255);
+            $record['country_code'] = blank($record['country_code']) ? null : mb_substr((string) $record['country_code'], 0, 2);
+            $record['region_code'] = blank($record['region_code']) ? null : mb_substr((string) $record['region_code'], 0, 10);
+            $record['municipality'] = blank($record['municipality']) ? null : mb_substr((string) $record['municipality'], 0, 255);
+            $record['time_zone'] = blank($record['time_zone']) ? null : mb_substr((string) $record['time_zone'], 0, 255);
 
             $chunk[] = $record;
             $processed++;
@@ -180,8 +187,10 @@ class AirportController extends Controller
 
             return response()->json(['results' => $airports->values()]);
         } catch (\Throwable $e) {
+            report($e);
+
             return response()->json([
-                'error' => $e->getMessage(),
+                'error' => 'Unable to search airports right now.',
             ], 500);
         }
     }

@@ -22,7 +22,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:6,1');
 
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    Route::post('/register', [RegisterController::class, 'store'])->name('register.store')->middleware('throttle:10,1');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])
@@ -40,9 +40,9 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::get('/tours', [TourCenterController::class, 'index'])->name('tours.index');
+    Route::get('/tours/my', [TourCenterController::class, 'myTours'])->name('tours.my');
     Route::get('/tours/{tour}', [TourCenterController::class, 'show'])->name('tours.show');
     Route::post('/tours/{tour}/book', [TourCenterController::class, 'book'])->name('tours.book');
-    Route::get('/tours/my', [TourCenterController::class, 'myTours'])->name('tours.my');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');

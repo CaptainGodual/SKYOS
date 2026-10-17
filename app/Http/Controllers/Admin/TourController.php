@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTourRequest;
 use App\Http\Requests\UpdateTourRequest;
 use App\Models\Tour;
+use App\Models\TourLeg;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -79,8 +80,8 @@ class TourController extends Controller
             'leg_number' => $validated['leg_number'] ?? ($lastLeg + 1),
             'departure_airport_id' => $validated['departure_airport_id'],
             'arrival_airport_id' => $validated['arrival_airport_id'],
-            'distance_nm' => $validated['distance_nm'],
-            'estimated_minutes' => $validated['estimated_minutes'],
+            'distance_nm' => $validated['distance_nm'] ?? null,
+            'estimated_minutes' => $validated['estimated_minutes'] ?? null,
         ]);
 
         return back()->with('success', 'Tour leg added.');
@@ -88,6 +89,8 @@ class TourController extends Controller
 
     public function removeLeg(Tour $tour, TourLeg $leg): RedirectResponse
     {
+        abort_unless($leg->tour_id === $tour->id, 404);
+
         $leg->delete();
 
         return back()->with('success', 'Tour leg removed.');

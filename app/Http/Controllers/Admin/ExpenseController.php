@@ -47,7 +47,7 @@ class ExpenseController extends Controller
      */
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
-        $expense = FlightExpense::query()->create($request->validated(['name', 'category', 'description', 'cost_cents', 'is_active']));
+        $expense = FlightExpense::query()->create($request->safe()->only(['name', 'category', 'description', 'cost_cents', 'is_active']));
 
         // Attach selected airports
         $airportIds = $request->validated('airport_ids') ?? [];
@@ -79,7 +79,7 @@ class ExpenseController extends Controller
      */
     public function update(UpdateExpenseRequest $request, FlightExpense $expense): RedirectResponse
     {
-        $expense->update($request->validated(['name', 'category', 'description', 'cost_cents', 'is_active']));
+        $expense->update($request->safe()->only(['name', 'category', 'description', 'cost_cents', 'is_active']));
 
         // Sync airports
         $airportIds = $request->validated('airport_ids') ?? [];
