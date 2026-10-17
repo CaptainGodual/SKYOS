@@ -41,6 +41,8 @@ class PageSmokeTest extends TestCase
             'tours' => ['tours.index'],
             'my tours' => ['tours.my'],
             'tour detail' => ['tours.show'],
+            'open flights' => ['flights.index'],
+            'pilot roster' => ['pilots.index'],
             'inbox' => ['messages.index'],
         ];
     }

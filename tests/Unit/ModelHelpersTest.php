@@ -3,9 +3,11 @@
 namespace Tests\Unit;
 
 use App\Models\ApiToken;
+use App\Models\CrewMessage;
 use App\Models\Flight;
 use App\Models\Pirep;
 use App\Models\TourBooking;
+use App\Models\User;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -69,5 +71,57 @@ class ModelHelpersTest extends TestCase
 
             $this->assertFalse($booking->isActive(), "{$status} should not count as active.");
         }
+    }
+
+    public function test_it_shortens_a_name_to_a_first_name_and_surname_initial(): void
+    {
+        $this->assertSame('Piper A.', User::shortName('Piper Alpha'));
+        $this->assertSame('Jean-Luc P.', User::shortName('Jean-Luc Picard'));
+        $this->assertSame('Piper B.', User::shortName('Piper van der Berg'));
+        $this->assertSame('Piper A.', User::shortName('Piper Alpha-Bravo'));
+        $this->assertSame('Piper A.', User::shortName('  Piper   Alpha  '));
+        $this->assertSame('Åsa Ö.', User::shortName('Åsa Öberg'));
+    }
+
+    public function test_a_name_that_is_already_short_is_left_alone(): void
+    {
+        $this->assertSame('Madonna', User::shortName('Madonna'));
+        $this->assertSame('Piper A.', User::shortName('Piper A.'));
+        $this->assertSame('Piper A.', User::shortName('Piper A'));
+    }
+
+    public function test_a_missing_name_still_reads_as_a_crew_member(): void
+    {
+        $this->assertSame('Crew member', User::shortName(null));
+        $this->assertSame('Crew member', User::shortName('   '));
+    }
+
+    public function test_the_display_name_and_avatar_initial_come_from_the_stored_name(): void
+    {
+        $user = new User;
+        $user->name = 'Piper Alpha';
+
+        $this->assertSame('Piper A.', $user->displayName());
+        $this->assertSame('P', $user->initial());
+
+        $user->name = '   ';
+
+        $this->assertSame('Crew member', $user->displayName());
+        $this->assertSame('', $user->initial());
+    }
+
+    public function test_the_names_copied_onto_flights_and_messages_are_shortened_too(): void
+    {
+        $flight = new Flight;
+        $flight->pilot_name = 'Piper Alpha';
+
+        $this->assertSame('Piper A.', $flight->pilotDisplayName());
+
+        $message = new CrewMessage;
+        $message->sender_name = 'Piper Alpha';
+        $message->recipient_name = 'Dana Bravo';
+
+        $this->assertSame('Piper A.', $message->senderDisplayName());
+        $this->assertSame('Dana B.', $message->recipientDisplayName());
     }
 }

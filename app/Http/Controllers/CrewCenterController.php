@@ -8,7 +8,9 @@ use App\Models\CrewMessage;
 use App\Models\Download;
 use App\Models\Flight;
 use App\Models\Pirep;
+use App\Models\User;
 use App\Models\WebhookEvent;
+use App\RouteMap;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -37,11 +39,13 @@ class CrewCenterController extends Controller
         return view('crew-center.index', [
             'user' => $user,
             'downloads' => Download::query()->latest()->take(4)->get(),
+            // Only a taste of the board: the full list lives on its own page
+            // next to the route map.
             'flights' => Flight::query()
                 ->where('status', 'Open')
                 ->whereNull('pilot_id')
                 ->orderBy('scheduled_at')
-                ->take(5)
+                ->take(3)
                 ->get(),
             'activeFlights' => Flight::query()
                 ->where('pilot_id', $pilotId)
@@ -55,13 +59,31 @@ class CrewCenterController extends Controller
                 ->take(3)
                 ->get(),
             'webhookEvents' => WebhookEvent::query()->latest()->take(4)->get(),
+            'crew' => User::messagingDirectory($pilotId),
             'stats' => [
                 'hours' => round($flightHours / 60, 1),
                 'income_cents' => $incomeCents,
                 'pending' => $pendingPireps,
                 'pirep_count' => $pirepCount,
                 'unread' => $unreadMessages,
+                'open_flights' => Flight::query()->where('status', 'Open')->whereNull('pilot_id')->count(),
             ],
+        ]);
+    }
+
+    /**
+     * The open flight board, with the map of every route in the network.
+     */
+    public function flights(Request $request, RouteMap $routeMap): View
+    {
+        return view('crew-center.flights.index', [
+            'user' => $request->user(),
+            'flights' => Flight::query()
+                ->where('status', 'Open')
+                ->whereNull('pilot_id')
+                ->orderBy('scheduled_at')
+                ->paginate(20),
+            'map' => $routeMap->build(),
         ]);
     }
 

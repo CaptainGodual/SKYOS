@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Airport;
 use App\Models\CrewMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,7 +24,7 @@ class CrewMessageTest extends TestCase
         $bystander = $this->pilot('Bravo Tango');
 
         $this->actingAs($sender)->post(route('messages.store'), [
-            'recipient_name' => 'Piper Alpha',
+            'recipient_id' => $recipient->id,
             'subject' => 'Roster swap',
             'body' => 'Can you take my Tuesday rotation?',
         ])->assertSessionHas('success');
@@ -38,14 +39,21 @@ class CrewMessageTest extends TestCase
             ->assertDontSee('Roster swap');
     }
 
-    public function test_two_pilots_with_the_same_name_do_not_share_a_mailbox(): void
+    public function test_the_recipient_is_picked_by_account_not_by_name(): void
     {
         $sender = $this->pilot('Dispatcher');
-        $first = $this->pilot('Alex Kim');
-        $second = $this->pilot('Alex Kim');
+        $first = $this->pilot('Alex Kim', Airport::factory()->create(['identifier' => 'EGLL']));
+        $second = $this->pilot('Alex Kim', Airport::factory()->create(['identifier' => 'KORD']));
+
+        // Two pilots can share a short name, so the picker points out the hub,
+        // and it is the account behind the option that receives the mail.
+        $this->actingAs($sender)->get(route('messages.index'))
+            ->assertOk()
+            ->assertSee('Alex K. · EGLL')
+            ->assertSee('Alex K. · KORD');
 
         $this->actingAs($sender)->post(route('messages.store'), [
-            'recipient_name' => 'Alex Kim',
+            'recipient_id' => $second->id,
             'subject' => 'Simulator check',
             'body' => 'Booked for Friday at 19:00Z.',
         ])->assertSessionHas('success');
@@ -59,8 +67,48 @@ class CrewMessageTest extends TestCase
             'Simulator check',
         );
 
-        // The name is ambiguous, but the message belongs to exactly one account.
-        $this->assertTrue(($firstSees xor $secondSees), 'Exactly one namesake should receive the message.');
+        $this->assertFalse($firstSees, 'The namesake who was not picked should see nothing.');
+        $this->assertTrue($secondSees, 'The account that was picked should see the message.');
+    }
+
+    public function test_the_inbox_shows_the_sender_without_their_surname(): void
+    {
+        $sender = $this->pilot('Dispatcher Person');
+        $recipient = $this->pilot('Piper Alpha');
+
+        $this->actingAs($sender)->post(route('messages.store'), [
+            'recipient_id' => $recipient->id,
+            'subject' => 'Welcome aboard',
+            'body' => 'Your crew centre access is live.',
+        ])->assertSessionHas('success');
+
+        $this->actingAs($recipient)->get(route('messages.index'))
+            ->assertOk()
+            ->assertSee('Dispatcher P.')
+            ->assertDontSee('Dispatcher Person');
+    }
+
+    public function test_a_message_can_only_be_sent_to_crew_in_good_standing(): void
+    {
+        $sender = $this->pilot('Dispatcher Person');
+        $applicant = User::factory()->create([
+            'name' => 'New Applicant',
+            'approval_status' => User::APPROVAL_PENDING,
+        ]);
+
+        $this->actingAs($sender)->post(route('messages.store'), [
+            'recipient_id' => $applicant->id,
+            'subject' => 'Hello',
+            'body' => 'Anybody there?',
+        ])->assertSessionHasErrors('recipient_id');
+
+        $this->actingAs($sender)->post(route('messages.store'), [
+            'recipient_id' => $sender->id,
+            'subject' => 'Note to self',
+            'body' => 'Do not do this.',
+        ])->assertSessionHasErrors('recipient_id');
+
+        $this->assertDatabaseCount('crew_messages', 0);
     }
 
     public function test_renaming_a_pilot_does_not_lose_their_messages(): void
@@ -69,7 +117,7 @@ class CrewMessageTest extends TestCase
         $pilot = $this->pilot('Piper Alpha');
 
         $this->actingAs($sender)->post(route('messages.store'), [
-            'recipient_name' => 'Piper Alpha',
+            'recipient_id' => $pilot->id,
             'subject' => 'Welcome aboard',
             'body' => 'Your crew centre access is live.',
         ])->assertSessionHas('success');
@@ -103,12 +151,13 @@ class CrewMessageTest extends TestCase
     }
 
     /**
-     * Create an approved crew member with a fixed name.
+     * Create an approved crew member with a fixed name and hub.
      */
-    private function pilot(string $name): User
+    private function pilot(string $name, ?Airport $hub = null): User
     {
         return User::factory()->create([
             'name' => $name,
+            'hub_id' => $hub?->id,
             'approval_status' => User::APPROVAL_APPROVED,
         ]);
     }

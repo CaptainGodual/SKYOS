@@ -41,6 +41,22 @@ class CrewMessage extends Model
     }
 
     /**
+     * The sender as the recipient sees them.
+     */
+    public function senderDisplayName(): string
+    {
+        return User::shortName($this->sender_name);
+    }
+
+    /**
+     * The recipient as the sender sees them.
+     */
+    public function recipientDisplayName(): string
+    {
+        return User::shortName($this->recipient_name);
+    }
+
+    /**
      * Determine whether the recipient has opened the message.
      */
     public function isRead(): bool

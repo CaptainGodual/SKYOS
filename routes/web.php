@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CrewCenterController;
 use App\Http\Controllers\DownloadController as PublicDownloadController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\PilotRosterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TourCenterController;
 use Illuminate\Support\Facades\Route;
@@ -32,9 +33,12 @@ Route::post('/logout', [LoginController::class, 'destroy'])
 
 Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/', [CrewCenterController::class, 'index'])->name('crew-center.index');
+    Route::get('/flights', [CrewCenterController::class, 'flights'])->name('flights.index');
     Route::post('/flights/{flight}/book', [CrewCenterController::class, 'book'])->name('flights.book')->middleware('throttle:30,1');
     Route::post('/flights/{flight}/events', [CrewCenterController::class, 'dispatchFlightEvent'])->name('flights.events.store')->middleware('throttle:30,1');
     Route::post('/pireps', [CrewCenterController::class, 'storePirep'])->name('pireps.store')->middleware('throttle:12,1');
+
+    Route::get('/pilots', [PilotRosterController::class, 'index'])->name('pilots.index');
 
     Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
     Route::post('/messages', [MessageController::class, 'store'])->name('messages.store')->middleware('throttle:10,1');

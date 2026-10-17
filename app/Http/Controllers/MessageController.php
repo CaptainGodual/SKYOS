@@ -29,7 +29,10 @@ class MessageController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        return view('crew-center.messages.index', ['messages' => $messages]);
+        return view('crew-center.messages.index', [
+            'messages' => $messages,
+            'crew' => User::messagingDirectory($user->id),
+        ]);
     }
 
     /**
@@ -38,15 +41,24 @@ class MessageController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'recipient_name' => ['required', 'string', 'max:100', 'exists:users,name'],
+            // The recipient is picked from the crew list rather than typed in:
+            // surnames are not published anywhere, so there is no full name to
+            // search for, and two pilots can share the same short name.
+            'recipient_id' => ['required', 'integer', 'exists:users,id'],
             'subject' => ['required', 'string', 'max:120'],
             'body' => ['required', 'string', 'max:2000'],
-        ], [
-            'recipient_name.exists' => 'No crew member with that name was found.',
         ]);
 
         $sender = $request->user();
-        $recipient = User::query()->where('name', $data['recipient_name'])->firstOrFail();
+        $recipient = User::query()->findOrFail($data['recipient_id']);
+
+        // Only crew in good standing can be written to, and nobody needs to
+        // write to themselves.
+        if (! $recipient->isApproved() || $recipient->is($sender)) {
+            return back()->withInput()->withErrors([
+                'recipient_id' => 'That crew member cannot receive messages.',
+            ]);
+        }
 
         CrewMessage::create([
             'sender_id' => $sender->id,

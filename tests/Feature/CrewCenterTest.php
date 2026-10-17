@@ -511,28 +511,28 @@ class CrewCenterTest extends TestCase
         ]);
 
         $this->actingAs($user)->post(route('messages.store'), [
-            'recipient_name' => 'Nobody At All',
+            'recipient_id' => 9999,
             'subject' => 'Hello?',
             'body' => 'Is anybody there?',
-        ])->assertSessionHasErrors('recipient_name');
+        ])->assertSessionHasErrors('recipient_id');
 
         $this->assertDatabaseCount('crew_messages', 0);
     }
 
-    public function test_a_message_reaches_the_named_pilot(): void
+    public function test_a_message_reaches_the_pilot_the_crew_list_names(): void
     {
         $sender = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED, 'name' => 'Piper Alpha']);
         $recipient = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED, 'name' => 'Bravo Tango']);
 
         $this->actingAs($sender)->post(route('messages.store'), [
-            'recipient_name' => 'Bravo Tango',
+            'recipient_id' => $recipient->id,
             'subject' => 'Roster swap',
             'body' => 'Can you take my Tuesday rotation?',
         ])->assertSessionHas('success');
 
         $this->assertDatabaseHas(CrewMessage::class, [
-            'sender_name' => 'Piper Alpha',
-            'recipient_name' => 'Bravo Tango',
+            'sender_id' => $sender->id,
+            'recipient_id' => $recipient->id,
         ]);
 
         $this->actingAs($recipient)->get('/')->assertSee('Roster swap');

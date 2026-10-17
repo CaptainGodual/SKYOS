@@ -32,6 +32,17 @@ class Flight extends Model
         return $this->belongsTo(User::class, 'pilot_id');
     }
 
+    /**
+     * The booked pilot as other crew members see them.
+     *
+     * The name is read from the column copied at booking time rather than the
+     * relation, so a list of flights does not fire a query per row.
+     */
+    public function pilotDisplayName(): string
+    {
+        return User::shortName($this->pilot_name);
+    }
+
     public function pireps(): HasMany
     {
         return $this->hasMany(Pirep::class);

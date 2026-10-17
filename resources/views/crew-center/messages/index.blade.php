@@ -37,7 +37,7 @@
                                 <div>
                                     <strong class="d-block">{{ $message->subject }}</strong>
                                     <div class="small text-body-secondary">
-                                        From {{ $message->sender_name }}
+                                        From {{ $message->senderDisplayName() }}
                                         <span class="mx-1">·</span>
                                         {{ $message->created_at->diffForHumans() }}
                                     </div>
@@ -63,22 +63,7 @@
             <div class="card mb-4">
                 <div class="card-header"><strong>Send a message</strong></div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('messages.store') }}" class="vstack gap-2">
-                        @csrf
-                        <div>
-                            <input class="form-control form-control-sm @error('recipient_name') is-invalid @enderror" name="recipient_name" value="{{ old('recipient_name') }}" placeholder="Recipient (pilot name)" required>
-                            @error('recipient_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-                        <div>
-                            <input class="form-control form-control-sm @error('subject') is-invalid @enderror" name="subject" value="{{ old('subject') }}" placeholder="Subject" required>
-                            @error('subject')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-                        <div>
-                            <textarea class="form-control form-control-sm @error('body') is-invalid @enderror" name="body" rows="3" placeholder="Message" required>{{ old('body') }}</textarea>
-                            @error('body')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-                        <button class="btn btn-sm btn-primary align-self-start" type="submit">Send message</button>
-                    </form>
+                    @include('crew-center.messages._compose')
                 </div>
             </div>
         </div>
