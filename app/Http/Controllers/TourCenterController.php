@@ -95,4 +95,28 @@ class TourCenterController extends Controller
             'bookings' => $bookings,
         ]);
     }
+
+    /**
+     * Release a tour the pilot no longer wants to fly.
+     */
+    public function cancel(TourBooking $booking): RedirectResponse
+    {
+        if ($booking->pilot_id !== auth()->id()) {
+            return back()->with('error', 'That booking is not yours.');
+        }
+
+        if (! $booking->isActive()) {
+            return back()->with('error', 'Only a tour you are still holding can be cancelled.');
+        }
+
+        // The row is kept and marked cancelled rather than deleted: the tour
+        // centre allows one booking per pilot and tour, so this row is what a
+        // later re-booking reuses.
+        $booking->update([
+            'status' => TourBooking::STATUS_CANCELLED,
+            'completed_at' => null,
+        ]);
+
+        return back()->with('success', "You've cancelled your {$booking->tour->name} booking.");
+    }
 }

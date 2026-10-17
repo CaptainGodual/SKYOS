@@ -19,13 +19,14 @@ class AirportController extends Controller
         $query = Airport::query();
 
         if ($request->filled('search')) {
-            $search = $request->string('search');
-            $query->where(function ($q) use ($search): void {
-                $q->where('identifier', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%")
-                    ->orWhere('iata_code', 'like', "%{$search}%")
-                    ->orWhere('icao_code', 'like', "%{$search}%")
-                    ->orWhere('municipality', 'like', "%{$search}%");
+            $pattern = $this->likePattern((string) $request->string('search'));
+
+            $query->where(function ($q) use ($pattern): void {
+                $q->whereRaw("identifier LIKE ? ESCAPE '!'", [$pattern])
+                    ->orWhereRaw("name LIKE ? ESCAPE '!'", [$pattern])
+                    ->orWhereRaw("iata_code LIKE ? ESCAPE '!'", [$pattern])
+                    ->orWhereRaw("icao_code LIKE ? ESCAPE '!'", [$pattern])
+                    ->orWhereRaw("municipality LIKE ? ESCAPE '!'", [$pattern]);
             });
         }
 
@@ -182,18 +183,32 @@ class AirportController extends Controller
     }
 
     /**
+     * Build a LIKE pattern that matches the operator's text literally.
+     *
+     * `%` and `_` are wildcards, so searching for "K_" would otherwise list
+     * every airport starting with K. The escape character is spelled out in the
+     * query too, because the default one is not the same on every engine.
+     */
+    private function likePattern(string $value): string
+    {
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
+
+        return '%'.$escaped.'%';
+    }
+
+    /**
      * Search airports for Select2 autocomplete.
      */
     public function search(Request $request): JsonResponse
     {
         try {
-            $query = (string) $request->string('query', '');
+            $pattern = $this->likePattern((string) $request->string('query', ''));
 
             $airports = Airport::query()
-                ->where(function ($q) use ($query): void {
-                    $q->where('identifier', 'like', "%{$query}%")
-                        ->orWhere('name', 'like', "%{$query}%")
-                        ->orWhere('municipality', 'like', "%{$query}%");
+                ->where(function ($q) use ($pattern): void {
+                    $q->whereRaw("identifier LIKE ? ESCAPE '!'", [$pattern])
+                        ->orWhereRaw("name LIKE ? ESCAPE '!'", [$pattern])
+                        ->orWhereRaw("municipality LIKE ? ESCAPE '!'", [$pattern]);
                 })
                 ->orderBy('identifier')
                 ->limit(20)

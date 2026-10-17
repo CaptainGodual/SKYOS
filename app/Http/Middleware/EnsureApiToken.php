@@ -39,8 +39,14 @@ class EnsureApiToken
             return response()->json(['message' => 'Your account is not approved for ACARS access.'], 403);
         }
 
-        // Update last used timestamp
-        $apiToken->update(['last_used_at' => now()]);
+        // Refresh the last used timestamp only once it has gone stale. ACARS
+        // clients poll frequently and a write per request buys nothing for a
+        // value that is only ever displayed. Timestamping is switched off so
+        // the token row is not marked as edited either.
+        if ($apiToken->last_used_at === null || $apiToken->last_used_at->lt(now()->subMinutes(5))) {
+            $apiToken->timestamps = false;
+            $apiToken->update(['last_used_at' => now()]);
+        }
 
         $request->attributes->set('acars_user', $apiToken->user);
 

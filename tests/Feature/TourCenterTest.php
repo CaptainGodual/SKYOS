@@ -220,4 +220,83 @@ class TourCenterTest extends TestCase
 
         $this->assertFalse((bool) $tour->fresh()->is_active);
     }
+
+    public function test_a_pilot_can_cancel_their_tour_booking(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $booking = TourBooking::factory()->create([
+            'pilot_id' => $user->id,
+            'status' => TourBooking::STATUS_BOOKED,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('tours.cancel', $booking))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        // The row stays and is marked cancelled: it is what a later re-booking
+        // reuses, since the table holds one row per pilot and tour.
+        $this->assertDatabaseHas('tour_bookings', [
+            'id' => $booking->id,
+            'status' => TourBooking::STATUS_CANCELLED,
+        ]);
+    }
+
+    public function test_a_pilot_cannot_cancel_a_booking_that_is_not_theirs(): void
+    {
+        $owner = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $other = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $booking = TourBooking::factory()->create([
+            'pilot_id' => $owner->id,
+            'status' => TourBooking::STATUS_BOOKED,
+        ]);
+
+        $this->actingAs($other)
+            ->post(route('tours.cancel', $booking))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('tour_bookings', [
+            'id' => $booking->id,
+            'status' => TourBooking::STATUS_BOOKED,
+        ]);
+    }
+
+    public function test_a_finished_booking_cannot_be_cancelled(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $booking = TourBooking::factory()->create([
+            'pilot_id' => $user->id,
+            'status' => TourBooking::STATUS_COMPLETED,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('tours.cancel', $booking))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('tour_bookings', [
+            'id' => $booking->id,
+            'status' => TourBooking::STATUS_COMPLETED,
+        ]);
+    }
+
+    public function test_the_booked_tours_page_only_offers_to_cancel_active_holdings(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $active = TourBooking::factory()->create([
+            'pilot_id' => $user->id,
+            'status' => TourBooking::STATUS_BOOKED,
+        ]);
+        $finished = TourBooking::factory()->create([
+            'pilot_id' => $user->id,
+            'status' => TourBooking::STATUS_COMPLETED,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('tours.my'))
+            ->assertOk()
+            ->assertSee(route('tours.cancel', $active), false)
+            ->assertDontSee(route('tours.cancel', $finished), false);
+    }
 }

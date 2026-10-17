@@ -46,6 +46,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/tours/my', [TourCenterController::class, 'myTours'])->name('tours.my');
     Route::get('/tours/{tour}', [TourCenterController::class, 'show'])->name('tours.show');
     Route::post('/tours/{tour}/book', [TourCenterController::class, 'book'])->name('tours.book')->middleware('throttle:10,1');
+    Route::post('/tours/bookings/{booking}/cancel', [TourCenterController::class, 'cancel'])->name('tours.cancel')->middleware('throttle:10,1');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');

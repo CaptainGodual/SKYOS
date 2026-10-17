@@ -77,7 +77,7 @@
                     </div>
 
                     @if ($alreadyBooked)
-                        <button class="btn btn-outline-success w-100" disabled>Already booked</button>
+                        <a class="btn btn-outline-success w-100" href="{{ route('tours.my') }}">Already booked — manage in My tours</a>
                     @else
                         <form method="POST" action="{{ route('tours.book', $tour) }}">
                             @csrf

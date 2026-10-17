@@ -33,6 +33,7 @@
                                 <th class="text-center">Status</th>
                                 <th class="text-center">Booked</th>
                                 <th class="text-center">Completed</th>
+                                <th class="text-end">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -50,10 +51,20 @@
                                     </td>
                                     <td class="text-center">{{ $booking->booked_at?->format('M d, Y') ?? '—' }}</td>
                                     <td class="text-center">{{ $booking->completed_at?->format('M d, Y') ?? '—' }}</td>
+                                    <td class="text-end">
+                                        @if ($booking->isActive())
+                                            <form method="POST" action="{{ route('tours.cancel', $booking) }}" onsubmit="return confirm('Cancel this tour booking? You can book it again later.')">
+                                                @csrf
+                                                <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
+                                            </form>
+                                        @else
+                                            <span class="text-body-secondary small">—</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td class="text-center py-4 text-body-secondary" colspan="6">You haven't booked any tours yet.</td>
+                                    <td class="text-center py-4 text-body-secondary" colspan="7">You haven't booked any tours yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>

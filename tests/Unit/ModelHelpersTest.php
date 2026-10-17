@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\ApiToken;
 use App\Models\Flight;
 use App\Models\Pirep;
+use App\Models\TourBooking;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -51,5 +52,22 @@ class ModelHelpersTest extends TestCase
     public function test_a_flight_status_list_covers_the_four_schedule_states(): void
     {
         $this->assertSame(['Open', 'Booked', 'Canceled', 'Completed'], Flight::STATUSES);
+    }
+
+    public function test_it_knows_which_tour_bookings_still_hold_a_tour(): void
+    {
+        $booking = new TourBooking;
+
+        foreach (TourBooking::ACTIVE_STATUSES as $status) {
+            $booking->status = $status;
+
+            $this->assertTrue($booking->isActive(), "{$status} should count as active.");
+        }
+
+        foreach ([TourBooking::STATUS_COMPLETED, TourBooking::STATUS_CANCELLED] as $status) {
+            $booking->status = $status;
+
+            $this->assertFalse($booking->isActive(), "{$status} should not count as active.");
+        }
     }
 }

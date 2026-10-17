@@ -52,6 +52,14 @@ class TourBooking extends Model
     }
 
     /**
+     * Determine whether the pilot still holds this tour.
+     */
+    public function isActive(): bool
+    {
+        return in_array($this->status, self::ACTIVE_STATUSES, true);
+    }
+
+    /**
      * Scope a query to the bookings that still hold a tour for the pilot.
      */
     public function scopeActive($query)

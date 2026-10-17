@@ -231,4 +231,34 @@ class AcarsApiTest extends TestCase
             ->getJson('/api/acars/flights')
             ->assertStatus(403);
     }
+
+    public function test_the_last_used_timestamp_is_only_written_once_it_is_stale(): void
+    {
+        $user = User::factory()->create(['approval_status' => User::APPROVAL_APPROVED]);
+        $token = ApiToken::create([
+            'user_id' => $user->id,
+            'token' => ApiToken::hashToken('fresh-token'),
+            'name' => 'Fresh Token',
+            'expires_at' => now()->addHours(24),
+            'last_used_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer fresh-token')
+            ->getJson('/api/acars/flights')
+            ->assertStatus(200);
+
+        // Polling every few seconds must not turn into a write every time.
+        $this->assertSame(
+            $token->last_used_at->getTimestamp(),
+            $token->fresh()->last_used_at->getTimestamp(),
+        );
+
+        $token->forceFill(['last_used_at' => now()->subHour()])->save();
+
+        $this->withHeader('Authorization', 'Bearer fresh-token')
+            ->getJson('/api/acars/flights')
+            ->assertStatus(200);
+
+        $this->assertTrue($token->fresh()->last_used_at->gt(now()->subMinutes(5)));
+    }
 }

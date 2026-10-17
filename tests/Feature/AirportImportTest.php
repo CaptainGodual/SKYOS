@@ -190,4 +190,41 @@ class AirportImportTest extends TestCase
         $this->assertDatabaseCount('airports', 2);
         $this->assertDatabaseMissing('airports', ['identifier' => 'EGLL']);
     }
+
+    public function test_the_airport_search_treats_wildcards_as_literal_characters(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Airport::factory()->create(['identifier' => 'KJFK', 'name' => 'John F. Kennedy International Airport']);
+        Airport::factory()->create(['identifier' => 'KXFK', 'name' => 'Nowhere Field']);
+
+        // "_" is a single character wildcard in SQL, so "K_FK" used to list both
+        // airports. It is a literal underscore now, and matches neither.
+        $this->actingAs($admin)
+            ->get(route('admin.airports.index', ['search' => 'K_FK']))
+            ->assertOk()
+            ->assertDontSee('KJFK')
+            ->assertDontSee('KXFK');
+
+        $this->actingAs($admin)
+            ->get(route('admin.airports.index', ['search' => 'Kennedy']))
+            ->assertOk()
+            ->assertSee('KJFK');
+    }
+
+    public function test_the_airport_autocomplete_treats_wildcards_as_literal_characters(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Airport::factory()->create(['identifier' => 'KJFK']);
+        Airport::factory()->create(['identifier' => 'KXFK']);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.airports.search', ['query' => '%']))
+            ->assertOk()
+            ->assertJsonCount(0, 'results');
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.airports.search', ['query' => 'KJFK']))
+            ->assertOk()
+            ->assertJsonCount(1, 'results');
+    }
 }
