@@ -23,6 +23,15 @@ return new class extends Migration
             $table->index('category');
             $table->index('is_active');
         });
+
+        // Now that `flight_expenses` exists we can wire up the pivot table's
+        // foreign key, which could not be created in the previous migration.
+        Schema::table('expense_airport', function (Blueprint $table) {
+            $table->foreign('expense_id')
+                ->references('id')
+                ->on('flight_expenses')
+                ->cascadeOnDelete();
+        });
     }
 
     /**
@@ -30,6 +39,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('expense_airport', function (Blueprint $table) {
+            $table->dropForeign(['expense_id']);
+        });
+
         Schema::dropIfExists('flight_expenses');
     }
 };

@@ -27,8 +27,19 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // The indexes must be dropped before the columns: SQLite rebuilds the
+        // table when dropping a column and chokes on an index that still
+        // references it.
+        Schema::table('flights', function (Blueprint $table) {
+            $table->dropIndex(['pilot_id']);
+        });
+
         Schema::table('flights', function (Blueprint $table) {
             $table->dropColumn('pilot_id');
+        });
+
+        Schema::table('pireps', function (Blueprint $table) {
+            $table->dropIndex(['pilot_id']);
         });
 
         Schema::table('pireps', function (Blueprint $table) {

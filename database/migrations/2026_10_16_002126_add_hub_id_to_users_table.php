@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('hub_id')->nullable()->constrained('hubs')->after('approval_status');
+            // A pilot's home hub is an airport. The foreign key itself is created
+            // by the later `change_users_hub_id_to_airports_table` migration,
+            // because MySQL cannot reference a table that does not exist yet.
+            $table->foreignId('hub_id')->nullable()->after('approval_status');
         });
     }
 

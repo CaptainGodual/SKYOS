@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('expense_airport', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('expense_id')->constrained('flight_expenses')->onDelete('cascade');
+
+            // The `flight_expenses` foreign key is added by the next migration
+            // (create_flight_expenses_table) once that table exists, because
+            // MySQL cannot reference a table that does not exist yet.
+            $table->foreignId('expense_id');
             $table->foreignId('airport_id')->constrained('airports')->onDelete('cascade');
             $table->timestamps();
 

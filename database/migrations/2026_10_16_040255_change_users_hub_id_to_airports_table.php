@@ -11,8 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['hub_id']);
+        // Only drop the old constraint if this migration is running against a
+        // database that still has the original `hubs` foreign key.
+        $hasHubForeignKey = collect(Schema::getForeignKeys('users'))
+            ->contains(fn (array $foreignKey): bool => $foreignKey['columns'] === ['hub_id']);
+
+        Schema::table('users', function (Blueprint $table) use ($hasHubForeignKey) {
+            if ($hasHubForeignKey) {
+                $table->dropForeign(['hub_id']);
+            }
+
             $table->foreign('hub_id')
                 ->references('id')
                 ->on('airports')

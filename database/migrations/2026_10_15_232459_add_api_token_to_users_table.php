@@ -22,6 +22,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
+            // Drop the unique index before the column: SQLite rebuilds the
+            // table when dropping a column and chokes on a leftover index.
+            $table->dropUnique(['api_token']);
             $table->dropColumn('api_token');
         });
     }
