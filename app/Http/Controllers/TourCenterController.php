@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CrewMessage;
 use App\Models\Tour;
 use App\Models\TourBooking;
 use Illuminate\Http\RedirectResponse;
@@ -29,11 +28,6 @@ class TourCenterController extends Controller
             'user' => $user,
             'tours' => $tours,
             'bookedTourIds' => $bookedTourIds,
-            'messages' => CrewMessage::query()
-                ->where('recipient_name', $user->name)
-                ->latest()
-                ->take(3)
-                ->get(),
         ]);
     }
 
@@ -52,11 +46,6 @@ class TourCenterController extends Controller
             'user' => $user,
             'tour' => $tour,
             'alreadyBooked' => $alreadyBooked,
-            'messages' => CrewMessage::query()
-                ->where('recipient_name', $user->name)
-                ->latest()
-                ->take(3)
-                ->get(),
         ]);
     }
 
@@ -104,11 +93,6 @@ class TourCenterController extends Controller
         return view('crew-center.tours.my-tours', [
             'user' => $user,
             'bookings' => $bookings,
-            'messages' => CrewMessage::query()
-                ->where('recipient_name', $user->name)
-                ->latest()
-                ->take(3)
-                ->get(),
         ]);
     }
 }

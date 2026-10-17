@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateProfileRequest;
 use App\Models\Airport;
-use App\Models\CrewMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -19,11 +18,6 @@ class ProfileController extends Controller
 
         return view('profile.edit', [
             'user' => $user,
-            'messages' => CrewMessage::query()
-                ->where('recipient_name', $user->name)
-                ->latest()
-                ->take(3)
-                ->get(),
             'countries' => (new UpdateProfileRequest)->countries(),
             'hubAirports' => Airport::query()->hub()->orderBy('identifier')->get(),
         ]);

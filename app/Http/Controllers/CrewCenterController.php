@@ -30,7 +30,7 @@ class CrewCenterController extends Controller
         $pendingPireps = Pirep::query()->where('pilot_id', $pilotId)->where('status', 'Pending review')->count();
         $pirepCount = Pirep::query()->where('pilot_id', $pilotId)->count();
         $unreadMessages = CrewMessage::query()
-            ->where('recipient_name', $user->name)
+            ->where('recipient_id', $pilotId)
             ->whereNull('read_at')
             ->count();
 
@@ -50,7 +50,7 @@ class CrewCenterController extends Controller
                 ->take(4)
                 ->get(),
             'messages' => CrewMessage::query()
-                ->where('recipient_name', $user->name)
+                ->where('recipient_id', $pilotId)
                 ->latest()
                 ->take(3)
                 ->get(),
@@ -128,24 +128,6 @@ class CrewCenterController extends Controller
         // once an administrator approves the report (see PirepSettlement).
 
         return back()->with('success', 'Your manual PIREP has been submitted for review.');
-    }
-
-    public function storeMessage(Request $request): RedirectResponse
-    {
-        // Crew messages are addressed by pilot name (see the crew_messages
-        // table), so the recipient must be a real crew member rather than any
-        // name the sender happens to type.
-        $data = $request->validate([
-            'recipient_name' => ['required', 'string', 'max:100', 'exists:users,name'],
-            'subject' => ['required', 'string', 'max:120'],
-            'body' => ['required', 'string', 'max:2000'],
-        ], [
-            'recipient_name.exists' => 'No crew member with that name was found.',
-        ]);
-
-        CrewMessage::create([...$data, 'sender_name' => $request->user()->name]);
-
-        return back()->with('success', 'Your message is on its way.');
     }
 
     public function dispatchFlightEvent(Request $request, Flight $flight, FlightWebhookDispatcher $webhooks): RedirectResponse

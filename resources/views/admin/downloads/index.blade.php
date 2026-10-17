@@ -61,6 +61,7 @@
         </div>
         <div class="card-footer small text-body-secondary">
             {{ $downloads->total() }} download{{ $downloads->total() !== 1 ? 's' : '' }} on record · {{ $downloads->perPage() }} per page
+            <div class="mt-2">{{ $downloads->links() }}</div>
         </div>
     </div>
 @endsection

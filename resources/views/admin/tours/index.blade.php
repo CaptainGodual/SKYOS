@@ -71,6 +71,7 @@
         </div>
         <div class="card-footer small text-body-secondary">
             {{ $tours->total() }} tour{{ $tours->total() !== 1 ? 's' : '' }} on record · {{ $tours->perPage() }} per page
+            <div class="mt-2">{{ $tours->links() }}</div>
         </div>
     </div>
 @endsection

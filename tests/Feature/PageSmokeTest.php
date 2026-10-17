@@ -41,6 +41,7 @@ class PageSmokeTest extends TestCase
             'tours' => ['tours.index'],
             'my tours' => ['tours.my'],
             'tour detail' => ['tours.show'],
+            'inbox' => ['messages.index'],
         ];
     }
 
@@ -111,7 +112,7 @@ class PageSmokeTest extends TestCase
         ]);
 
         Download::factory()->create();
-        CrewMessage::factory()->create(['recipient_name' => $pilot->name]);
+        CrewMessage::factory()->recipient($pilot)->create(['subject' => 'Roster swap']);
         WebhookEvent::factory()->create(['flight_id' => $flight->id]);
 
         $response = $this->actingAs($pilot)->get(route($routeName, $routeName === 'tours.show' ? ['tour' => $tour] : []));

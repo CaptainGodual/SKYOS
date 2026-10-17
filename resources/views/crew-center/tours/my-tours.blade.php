@@ -61,6 +61,7 @@
                 </div>
                 <div class="card-footer small text-body-secondary">
                     {{ $bookings->total() }} booking{{ $bookings->total() !== 1 ? 's' : '' }} · {{ $bookings->perPage() }} per page
+                    <div class="mt-2">{{ $bookings->links() }}</div>
                 </div>
             </div>
         </div>

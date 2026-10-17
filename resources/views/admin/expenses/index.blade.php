@@ -67,6 +67,7 @@
         </div>
         <div class="card-footer small text-body-secondary">
             {{ $expenses->total() }} expense{{ $expenses->total() !== 1 ? 's' : '' }} on record &middot; {{ $expenses->perPage() }} per page
+            <div class="mt-2">{{ $expenses->links() }}</div>
         </div>
     </div>
 @endsection
