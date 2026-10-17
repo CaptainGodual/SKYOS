@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Application test suite. The suite runs on SQLite (see phpunit.xml), which is
+  # fast but permissive — hence the dedicated MySQL job below.
+  # ---------------------------------------------------------------------------
+  tests:
+    name: Tests (SQLite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      # The Blade layouts use @vite(...), so the Vite manifest must exist or
+      # every page-rendering test fails with "Unable to locate file in Vite manifest".
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run test suite
+        run: php artisan test --compact
+
+  # ---------------------------------------------------------------------------
+  # Runs the migrations against a real MySQL server, then rolls every one of
+  # them back. This is the job that catches the class of bug SQLite hides:
+  # foreign keys referencing tables that do not exist yet, index/column drop
+  # ordering, index length limits, and broken down() methods.
+  # ---------------------------------------------------------------------------
+  migrations:
+    name: Migrations (MySQL)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: skyos_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    # Real environment variables win over .env, so these force the app to use
+    # MySQL even though .env.example defaults to SQLite.
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: skyos_ci
+      DB_USERNAME: root
+      DB_PASSWORD: password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql
+          coverage: none
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      # Fail loudly if we are somehow still pointed at SQLite, otherwise this
+      # job would silently pass without testing MySQL at all.
+      - name: Confirm the MySQL connection is in use
+        run: php artisan db:show | grep -Ei 'MySQL|MariaDB'
+
+      - name: Migrate from scratch
+        run: php artisan migrate:fresh --force
+
+      - name: Roll every migration back
+        run: php artisan migrate:rollback --force
+
+      - name: Migrate again
+        run: php artisan migrate --force
+
+      - name: Seed
+        run: php artisan db:seed --force
